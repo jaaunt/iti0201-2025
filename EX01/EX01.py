@@ -23,4 +23,4 @@ class Robot:
     def act(self):
         """Act on the plan."""
         self.plan()
-        pass
+        return self.plan()
