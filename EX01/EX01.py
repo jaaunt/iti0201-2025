@@ -13,10 +13,13 @@ class Robot:
         self.robot = robot
 
     def sense(self):
+        """Collect data and sort it to variables."""
         pass
 
     def plan(self):
+        """Analyse data and decide on an action"""
         pass
 
     def act(self):
+        """Act on the plan"""
         pass
