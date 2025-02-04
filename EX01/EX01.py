@@ -11,6 +11,7 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
+        action = spin
 
     def sense(self):
         """Collect data and sort it to variables."""
