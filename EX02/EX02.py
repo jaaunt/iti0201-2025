@@ -1,5 +1,6 @@
 """EX02: State Machines."""
 
+
 class Robot:
     """Turtlebot robot."""
 
