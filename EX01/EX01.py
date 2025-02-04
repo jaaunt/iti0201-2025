@@ -17,9 +17,9 @@ class Robot:
         pass
 
     def plan(self):
-        """Analyse data and decide on an action"""
+        """Analyse data and decide on an action."""
         pass
 
     def act(self):
-        """Act on the plan"""
+        """Act on the plan."""
         pass
