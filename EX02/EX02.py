@@ -64,6 +64,7 @@ class Robot:
         """
         if self.get_state():
             self.state = self.get_state()
+            return self.state
         else:
             return self.state
 
