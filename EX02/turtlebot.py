@@ -13,8 +13,14 @@ To use with data file set the value in local.py main to the task related .pkl fi
 
 
 class Robot:
+    """
+    Turtlebot robot class.
+    """
+
     def __init__(self):
-        """Initialize robot object."""
+        """
+        Initialize robot object.
+        """
         self.time = None
         self.orientation = None
         self.range_list = None
@@ -22,27 +28,39 @@ class Robot:
         self.enc_r = None
 
     def get_time(self):
-        """Return the current time."""
+        """
+        Return the current time.
+        """
         return self.time
 
     def get_orientation(self):
-        """Return the current orientation."""
+        """
+        Return the current orientation.
+        """
         return self.orientation
 
     def get_lidar_range_list(self):
-        """Return the current lidar range list."""
+        """
+        Return the current lidar range list.
+        """
         return self.range_list
 
     def get_left_motor_encoder_ticks(self):
-        """Return the current left motor."""
+        """
+        Return the current left motor.
+        """
         return self.enc_l
 
     def get_right_motor_encoder_ticks(self):
-        """Return the current right motor."""
+        """
+        Return the current right motor.
+        """
         return self.enc_r
 
     def _set_data(self, data_at_time_step: list) -> None:
-        """Format the data."""
+        """
+        Format the data.
+        """
         self.time = data_at_time_step[0]
         self.orientation = data_at_time_step[1]
         self.enc_l = data_at_time_step[2]
