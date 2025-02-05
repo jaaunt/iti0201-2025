@@ -11,7 +11,7 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
-        self.state = ""
+        self.state = None
 
     def get_state(self) -> str:
         """Extract the current state of the robot based on Lidar sensor readings.
