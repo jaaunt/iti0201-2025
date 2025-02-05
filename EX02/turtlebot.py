@@ -42,7 +42,7 @@ class Robot:
         return self.enc_r
 
     def _set_data(self, data_at_time_step: list) -> None:
-        """Format data."""
+        """Format the data."""
         self.time = data_at_time_step[0]
         self.orientation = data_at_time_step[1]
         self.enc_l = data_at_time_step[2]
