@@ -43,7 +43,7 @@ class Robot:
         """
         lidar_ranges = self.robot.get_lidar_range_list()  # saa see data
         if not lidar_ranges:  # kui no data
-            return self.state
+            return
 
         front_distance = lidar_ranges[len(lidar_ranges) // 2]  # assumin et front facing vaartus umbes keskel
 
