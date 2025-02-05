@@ -11,6 +11,7 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
+        self.state = ""
 
     def get_state(self) -> str:
         """Extract the current state of the robot based on Lidar sensor readings.
@@ -40,6 +41,20 @@ class Robot:
             str: The current state of the robot based on its distance from an obstacle:
                  ("very far", "far", "near", or "close").
         """
+        lidar_ranges = self.robot.get_lidar_range_list()  # saa see data
+        if not lidar_ranges:  # kui no data
+            return self.state
+
+        front_distance = lidar_ranges[len(lidar_ranges) // 2]  # assumin et front facing vaartus umbes keskel
+
+        if front_distance >= 1.5:
+            return "very far"
+        elif 1 <= front_distance < 1.5:
+            return "far"
+        elif 0.7 <= front_distance < 0.7:
+            return "near"
+        else:
+            return "close"
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -47,20 +62,25 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
+        self.state = self.get_state()
 
     def plan(self) -> None:
         """Plan the robot's actions.
 
         Process the data collected during sensing and decide the next course
         of action for the robot.
+        Empty.
         """
+        pass
 
     def act(self) -> None:
         """Execute planned actions.
 
         Perform the actions decided in the planning step, such as moving or
         interacting with the environment.
+        Empty.
         """
+        pass
 
     def spin(self) -> None:
         """Spin the robot.
