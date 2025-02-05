@@ -42,12 +42,12 @@ class Robot:
                  ("very far", "far", "near", or "close").
         """
         lidar_ranges = self.robot.get_lidar_range_list()  # saa see data
-        if lidar_ranges == None:  # kui no data
+        if not lidar_ranges:  # kui no data
             return None
 
         front_distance = lidar_ranges[len(lidar_ranges) // 2]  # assumin et front facing vaartus umbes keskel
 
-        if front_distance >= 1.5:
+        if front_distance >= 1.5 or front_distance == "inf":
             return "very far"
         elif 1 <= front_distance < 1.5:
             return "far"
