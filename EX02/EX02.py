@@ -64,6 +64,7 @@ class Robot:
         self.state = self.get_state()
         if self.get_state():
             self.state = self.get_state()
+        print(self.state)
 
     def plan(self) -> None:
         """Plan the robot's actions.
