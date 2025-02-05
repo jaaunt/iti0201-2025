@@ -17,6 +17,7 @@ import turtlebot as turtlebot
 
 
 def load_dataset(filename):
+    """Load the dataset."""
     with open(filename, 'rb') as file:
         loaded_data = pickle.load(file)
     return loaded_data
