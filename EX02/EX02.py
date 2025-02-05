@@ -43,7 +43,7 @@ class Robot:
         """
         lidar_ranges = self.robot.get_lidar_range_list()  # saa see data
         if lidar_ranges == None:  # kui no data
-            return "no data"
+            return None
 
         front_distance = lidar_ranges[len(lidar_ranges) // 2]  # assumin et front facing vaartus umbes keskel
 
@@ -62,7 +62,7 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
-        if self.get_state() == "no data":
+        if self.get_state() == None:
             pass
         else:
             self.state = self.get_state()
