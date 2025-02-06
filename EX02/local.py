@@ -31,3 +31,4 @@ if __name__ == "__main__":
         turtlebot_interface._set_data(data_at_time_step)
         student_robot.spin()
         lidar_ranges = turtlebot_interface.get_lidar_range_list()
+        print(lidar_ranges)
