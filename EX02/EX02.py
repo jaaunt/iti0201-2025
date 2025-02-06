@@ -61,7 +61,7 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
-        test = self.get_state()
+        test = "far"
         return test
 
     def plan(self) -> None:
