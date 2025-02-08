@@ -2,8 +2,7 @@
 
 
 class Robot:
-    """A class representing a turtlebot robot.
-    """
+    """A class representing a turtlebot robot."""
 
     def __init__(self):
         """Initialize robot object.
