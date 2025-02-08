@@ -9,6 +9,8 @@ class Robot:
 
         Args:
             robot (object): An instance of a Turtlebot-like robot interface.
+            front_distance = distance measured at the front of the robot.
+            last_state = the state of distance the robot had at the last time.
         """
         self.robot = robot
         self.front_distance = None
