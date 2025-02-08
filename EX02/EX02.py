@@ -70,7 +70,6 @@ class Robot:
             self.front_distance = lidar_ranges[-(len(lidar_ranges) // 4)]
         else:
             self.front_distance = None
-        current_state = self.get_state()
 
     def plan(self) -> None:
         """Plan the robot's actions.
