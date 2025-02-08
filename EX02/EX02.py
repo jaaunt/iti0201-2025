@@ -11,6 +11,8 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
+        self.front_distance = None
+        self.last_state = None
 
     def get_state(self) -> str:
         """Extract the current state of the robot based on Lidar sensor readings.
@@ -40,20 +42,21 @@ class Robot:
             str: The current state of the robot based on its distance from an obstacle:
                  ("very far", "far", "near", or "close").
         """
-        lidar_ranges = self.robot.get_lidar_range_list()  # saa see data
-        if not lidar_ranges:  # kui no data
-            return None
+        if self.front_distance is None:
+            return self.last_state
 
-        front_distance = lidar_ranges[len(lidar_ranges) // 2]  # assumin et front facing vaartus umbes keskel
-
-        if front_distance >= 1.5 or front_distance == "inf":
-            return "very far"
-        elif 1 <= front_distance < 1.5:
-            return "far"
-        elif 0.7 <= front_distance < 1:
-            return "near"
+        if self.front_distance >= 1.5 or self.front_distance == "inf":
+            current_state = "very far"
+            self.last_state = "very far"
+        elif 1 <= self.front_distance < 1.5:
+            current_state = "far"
+            self.last_state = "far"
+        elif 0.7 <= self.front_distance < 1:
+            current_state = "near"
+            self.last_state = "near"
         else:
-            return "close"
+            current_state = "close"
+            self.last_state = "close"
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -61,10 +64,13 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
-        self.state = self.get_state()
-        if self.get_state():
-            self.state = self.get_state()
-        print(self.state)
+        lidar_ranges = self.robot.get_lidar_range_list()
+        if lidar_ranges:
+            self.front_distance = lidar_ranges[-(len(lidar_ranges) // 4)]
+        else:
+            self.front_distance = None
+        current_state = self.get_state()
+        return current_state
 
     def plan(self) -> None:
         """Plan the robot's actions.
