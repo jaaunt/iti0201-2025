@@ -28,7 +28,7 @@ class Robot:
         Get the current time of the activity.
 
         Returns:
-            the current time.
+            self.time = the current time.
         """
         return self.time
 
@@ -38,7 +38,7 @@ class Robot:
         Get the current orientation of the robot.
 
         Returns:
-            the current orientation.
+            self.orientation = the current orientation.
         """
         return self.orientation
 
@@ -48,7 +48,7 @@ class Robot:
         Get the current lidar range list.
 
         Returns:
-            the current lidar range list.
+            self.range_list = the current lidar range list.
         """
         return self.range_list
 
