@@ -2,7 +2,7 @@
 
 
 class Robot:
-    """Turtlebot robot class.
+    """A class representing a turtlebot robot.
 
     Args:
         time = the time when the activity occurred.
@@ -18,11 +18,11 @@ class Robot:
         Initialize a robot object with the attributes listed below.
 
         Args:
-            time = the time when the activity occurred.
-            orientation = the orientation of the robot.
-            range_list = a list of measured distances.
-            enc_l = power of the left engine.
-            enc_r = power of the right engine.
+            time (int) = the time when the activity occurred.
+            orientation (int) = the orientation of the robot.
+            range_list (list) = a list of measured distances.
+            enc_l (int) = power of the left engine.
+            enc_r (int) = power of the right engine.
         """
         self.time = None
         self.orientation = None
