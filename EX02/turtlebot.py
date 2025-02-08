@@ -58,7 +58,7 @@ class Robot:
         Get the current left motor power.
 
         Returns:
-            the current left motor power.
+            self.enc_l = the current left motor power.
         """
         return self.enc_l
 
@@ -68,7 +68,7 @@ class Robot:
         Return the current right motor power.
 
         Returns:
-            the current right motor power.
+            self.enc_r the current right motor power.
         """
         return self.enc_r
 
