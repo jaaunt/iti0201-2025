@@ -18,6 +18,8 @@ class Robot:
     def __init__(self):
         """Initialize robot object.
 
+        Initialize a robot object with the attributes listed below.
+
         Args:
             time = the time when the activity occurred.
             orientation = the orientation of the robot.
@@ -34,6 +36,8 @@ class Robot:
     def get_time(self):
         """Return the current time.
 
+        Get the current time of the activity.
+
         Returns:
             the current time.
         """
@@ -41,6 +45,8 @@ class Robot:
 
     def get_orientation(self):
         """Return the current orientation.
+
+        Get the current orientation of the robot.
 
         Returns:
             the current orientation.
@@ -50,6 +56,8 @@ class Robot:
     def get_lidar_range_list(self):
         """Return the current lidar range list.
 
+        Get the current lidar range list.
+
         Returns:
             the current lidar range list.
         """
@@ -57,6 +65,8 @@ class Robot:
 
     def get_left_motor_encoder_ticks(self):
         """Return the current left motor.
+
+        Get the current left motor power.
 
         Returns:
             the current left motor power.
@@ -66,13 +76,17 @@ class Robot:
     def get_right_motor_encoder_ticks(self):
         """Return the current right motor.
 
+        Return the current right motor power.
+
         Returns:
             the current right motor power.
         """
         return self.enc_r
 
     def _set_data(self, data_at_time_step: list) -> None:
-        """Format the data.
+        """Sort the data into attributes.
+
+        Sort parts of the list into attributes.
         """
         self.time = data_at_time_step[0]
         self.orientation = data_at_time_step[1]
