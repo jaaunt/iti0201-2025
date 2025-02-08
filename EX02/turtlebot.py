@@ -3,19 +3,12 @@
 
 class Robot:
     """A class representing a turtlebot robot.
-
-    Args:
-        time = the time when the activity occurred.
-        orientation = the orientation of the robot.
-        range_list = a list of measured distances.
-        enc_l = power of the left engine.
-        enc_r = power of the right engine.
     """
 
     def __init__(self):
         """Initialize robot object.
 
-        This sets the default values for the robot's sensor data and state attributes.
+        Initialize a robot object with the attributes listed below.
 
         Args:
             time = the time when the activity occurred.
