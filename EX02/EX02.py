@@ -71,8 +71,6 @@ class Robot:
         else:
             self.front_distance = None
         current_state = self.get_state()
-        if current_state:
-            return current_state
 
     def plan(self) -> None:
         """Plan the robot's actions.
