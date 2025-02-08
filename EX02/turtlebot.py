@@ -2,7 +2,15 @@
 
 
 class Robot:
-    """Turtlebot robot class."""
+    """Turtlebot robot class.
+
+    Args:
+        time = the time when the activity occurred.
+        orientation = the orientation of the robot.
+        range_list = a list of measured distances.
+        enc_l = power of the left engine.
+        enc_r = power of the right engine.
+    """
 
     def __init__(self):
         """Initialize robot object.
