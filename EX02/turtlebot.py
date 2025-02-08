@@ -1,15 +1,4 @@
-"""
-To use this helper file, please add it to the same directory as your EX02.py file along with the data files.
-
-The directory should have the following files in it:
-.
-├── EX02.py
-├── turtlebot.py
-├── {Data_file}.pkl
-└── local.py
-
-To use with data file set the value in local.py main to the task related .pkl file you want to use.
-"""
+"""Turtlebot helper file"""
 
 
 class Robot:
