@@ -57,6 +57,7 @@ class Robot:
         else:
             current_state = "close"
             self.last_state = "close"
+        return current_state
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -70,7 +71,8 @@ class Robot:
         else:
             self.front_distance = None
         current_state = self.get_state()
-        return current_state
+        if current_state:
+            return current_state
 
     def plan(self) -> None:
         """Plan the robot's actions.
