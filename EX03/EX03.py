@@ -1,5 +1,6 @@
 """S2."""
 
+
 class Robot:
     """Turtlebot robot."""
 
