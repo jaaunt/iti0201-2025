@@ -36,7 +36,7 @@ class Robot:
                 in_object = False
                 continue
 
-            if not in_object and self.range_list[i] < self.range_list[i - 1] * 0.7:
+            if not in_object and self.range_list[i] < self.range_list[i - 1] * 0.9:
                 in_object = True
                 start_idx = i
 
