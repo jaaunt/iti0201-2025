@@ -78,6 +78,7 @@ class Robot:
     def _filter_objects(self, objects):
         pass
 
+
     def plan(self) -> None:
         """Plan the robot's actions.
 
