@@ -76,14 +76,7 @@ class Robot:
         return index * angle_per_step
 
     def _filter_objects(self, objects):
-        min_distance_threshold = 0.5
-        valid_objects = []
-
-        for obj in objects:
-            if obj[0] > min_distance_threshold:
-                valid_objects.append(obj)
-
-        return valid_objects
+        pass
 
     def plan(self) -> None:
         """Plan the robot's actions.
