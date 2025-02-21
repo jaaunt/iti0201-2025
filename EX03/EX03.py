@@ -40,7 +40,7 @@ class Robot:
                 in_object = True
                 start_idx = i
 
-            elif in_object and self.range_list[i] > self.range_list[start_idx] * 1.2:
+            elif in_object and self.range_list[i] > self.range_list[start_idx] * 1.1:
                 center_idx = round(start_idx + (i - start_idx) / 2)
                 objects.append((self.range_list[center_idx], self._get_angle(center_idx)))
                 in_object = False
