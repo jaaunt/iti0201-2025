@@ -31,8 +31,7 @@ class Robot:
         start_idx = None
 
         for i in range(1, len(self.range_list)):
-            if self.range_list[i] is None or self.range_list[i] == float('inf') or self.range_list[i - 1] is None or \
-                    self.range_list[i - 1] == float('inf'):
+            if self.range_list[i] is None or self.range_list[i] == float('inf'):
                 in_object = False
                 continue
 
