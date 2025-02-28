@@ -57,17 +57,17 @@ class Robot:
 
         current_time = self.robot.get_time()
         delta_time = current_time - self.previous_time
-        if delta_time > 0:
-            error = (self.left_target_speed - current_speed) / delta_time
-        else:
-            error = 0.0
+        error = self.left_target_speed - current_speed
 
         # P osa pidist proportional gain * error = proportional term
         P_pid = self.kp * error
 
         # I osa pidist integral term
         self.integral_left += error  # kogunev error, iga kord kui runnib error suureneb
-        I_pid = self.ki * self.integral_left  # integral gain korrutada koguneva erroriga = i
+        if delta_time > 0:
+            I_pid = (self.ki * self.integral_right) / delta_time
+        else:
+            I_pid = 0.0
 
         # d osa pidist derivative term
         derivative = error - self.prev_left_error  # kui palju error on eelisest errorist erinev
@@ -87,20 +87,20 @@ class Robot:
         current_speed = self.robot.get_right_motor_encoder_ticks()
 
         current_time = self.robot.get_time()
-        delta_time = current_time - self.previous_time
-        if delta_time > 0:
-            error = (self.right_target_speed - current_speed) / delta_time
-        else:
-            error = 0.0
+        delta_time = current_time - self.previous_tim
+        error = self.right_target_speed - current_speed
 
         P_pid = self.kp * error
 
         self.integral_right += error
-        I_pid = self.ki * self.integral_right
+        if delta_time > 0:
+            I_pid = (self.ki * self.integral_right) / delta_time
+        else:
+            I_pid = 0.0
 
         derivative = error - self.prev_right_error
         if delta_time > 0:
-            D_pid = (self.kd * derivative) / delta_time
+            D_pid = (self.kd * derivative)
         else:
             D_pid = 0.0
         self.prev_right_error = error
