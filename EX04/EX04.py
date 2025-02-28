@@ -26,6 +26,9 @@ class Robot:
 
         self.previous_time = 0.0
 
+        self.calculated_speed_left = 0.0
+        self.calculated_speed_right = 0.0
+
     def set_pid(self, kp: float = 1.0, ki: float = 0.1, kd: float = 0.05) -> None:
         """Set the PID controller gains for the robot's wheel speed control.
 
@@ -75,13 +78,13 @@ class Robot:
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
 
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
-        self.robot.set_left_motor_encoder_ticks(current_speed + correction)  # apply changes
+        self.calculated_speed_left = current_speed + correction  # apply changes
 
         self.previous_time = current_time
 
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
-        current_speed = self.get_pid_corrected_right_wheel_speed()
+        current_speed = self.robot.get_right_motor_encoder_ticks()
 
         current_time = self.robot.get_time()
         delta_time = current_time - self.previous_time
@@ -103,17 +106,17 @@ class Robot:
         self.prev_right_error = error
 
         correction = P_pid + I_pid + D_pid
-        self.robot.set_right_motor_encoder_ticks(current_speed + correction)
+        self.calculated_speed_right = current_speed + correction
 
         self.previous_time = current_time
 
     def get_pid_corrected_left_wheel_speed(self) -> float:
         """Return the corrected left wheel speed."""
-        return self.robot.get_left_motor_encoder_ticks()
+        return self.calculated_speed_left
 
     def get_pid_corrected_right_wheel_speed(self) -> float:
         """Return the corrected right wheel speed."""
-        return self.robot.get_right_motor_encoder_ticks()
+        return self.calculated_speed_right
 
     def sense(self) -> None:
         """Gather sensor data."""
