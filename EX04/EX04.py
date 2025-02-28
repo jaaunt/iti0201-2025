@@ -24,6 +24,8 @@ class Robot:
         self.integral_left = 0.0
         self.integral_right = 0.0
 
+        self.previous_time = 0.0
+
     def set_pid(self, kp: float = 1.0, ki: float = 0.1, kd: float = 0.05) -> None:
         """Set the PID controller gains for the robot's wheel speed control.
 
@@ -51,6 +53,9 @@ class Robot:
         current_speed = self.get_pid_corrected_left_wheel_speed()
         error = self.left_target_speed - current_speed
 
+        current_time = self.robot.get_time()
+        delta_time = current_time - self.previous_time
+
         # P osa pidist proportional gain * error = proportional term
         P_pid = self.kp * error
 
@@ -60,18 +65,21 @@ class Robot:
 
         # d osa pidist derivative term
         derivative = error - self.prev_left_error  # kui palju error on eelisest errorist erinev
-        dt = 0.1
-        D_pid = (self.kd * derivative) / dt
-        D_pid = self.kd * derivative  # derative gain korda errori muutus
+        D_pid = (self.kd * derivative) / delta_time  # derative gain korda errori muutus
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
 
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
         self.robot.set_left_motor_encoder_ticks(current_speed + correction)  # apply changes
 
+        self.previous_time = current_time
+
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
         current_speed = self.get_pid_corrected_right_wheel_speed()
         error = self.right_target_speed - current_speed
+
+        current_time = self.robot.get_time()
+        delta_time = current_time - self.previous_time
 
         P_pid = self.kp * error
 
@@ -79,12 +87,13 @@ class Robot:
         I_pid = self.ki * self.integral_right
 
         derivative = error - self.prev_right_error
-        dt = 0.1
-        D_pid = (self.kd * derivative) / dt
+        D_pid = (self.kd * derivative) / delta_time
         self.prev_right_error = error
 
         correction = P_pid + I_pid + D_pid
         self.robot.set_right_motor_encoder_ticks(current_speed + correction)
+
+        self.previous_time = current_time
 
     def get_pid_corrected_left_wheel_speed(self) -> float:
         """Return the corrected left wheel speed."""
