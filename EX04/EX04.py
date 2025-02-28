@@ -77,7 +77,8 @@ class Robot:
         I_pid = self.ki * self.integral_right
 
         derivative = error - self.prev_right_error
-        D_pid = self.kd * derivative
+        dt = 0.1
+        D_pid = (self.kd * derivative) / dt
         self.prev_right_error = error
 
         correction = P_pid + I_pid + D_pid
