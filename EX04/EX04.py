@@ -36,6 +36,12 @@ class Robot:
         self.prev_speed_left = 0.0
         self.prev_speed_right = 0.0
 
+        self.encoder_ticks_left = 0.0
+        self.encoder_ticks_right = 0.0
+
+        self.prev_ticks_left = 0.0
+        self.prev_ticks_right = 0.0
+
     def set_pid(self, kp: float = 1.0, ki: float = 0.1, kd: float = 0.05) -> None:
         """Set the PID controller gains for the robot's wheel speed control.
 
@@ -83,8 +89,6 @@ class Robot:
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
         self.calculated_speed_left = correction  # apply changes
 
-        self.prev_speed_left = self.current_speed_left
-
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
         error = self.right_target_speed - self.current_speed_right
@@ -107,8 +111,6 @@ class Robot:
         correction = P_pid + I_pid + D_pid
         self.calculated_speed_right = correction
 
-        self.prev_speed_right = self.current_speed_right
-
     def get_pid_corrected_left_wheel_speed(self) -> float:
         """Return the corrected left wheel speed."""
         return self.calculated_speed_left
@@ -122,9 +124,16 @@ class Robot:
         self.previous_time = self.current_time
         self.current_time = self.robot.get_time()
         self.delta_time = self.current_time - self.previous_time
+
+        self.prev_ticks_right = self.encoder_ticks_right
+        self.prev_ticks_left = self.encoder_ticks_left
+
+        self.encoder_ticks_right = self.robot.get_right_motor_encoder_ticks()
+        self.encoder_ticks_left = self.robot.get_left_motor_encoder_ticks()
+
         if self.delta_time > 0:
-            self.current_speed_right = (self.robot.get_right_motor_encoder_ticks() - self.prev_speed_right) / self.delta_time
-            self.current_speed_left = (self.robot.get_left_motor_encoder_ticks() - self.prev_speed_left) / self.delta_time
+            self.current_speed_right = (self.encoder_ticks_right - self.prev_ticks_right) / self.delta_time
+            self.current_speed_left = (self.encoder_ticks_left - self.prev_ticks_left) / self.delta_time
 
     def plan(self) -> None:
         """Plan robot actions."""
