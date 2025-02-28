@@ -25,6 +25,7 @@ class Robot:
         self.integral_right = 0.0
 
         self.previous_time = 0.0
+        self.delta_time = 0.0
 
         self.calculated_speed_left = 0.0
         self.calculated_speed_right = 0.0
@@ -32,6 +33,8 @@ class Robot:
         self.current_time = 0.0
         self.current_speed_left = 0.0
         self.current_speed_right = 0.0
+        self.prev_speed_left = 0.0
+        self.prev_speed_right = 0.0
 
     def set_pid(self, kp: float = 1.0, ki: float = 0.1, kd: float = 0.05) -> None:
         """Set the PID controller gains for the robot's wheel speed control.
@@ -57,7 +60,6 @@ class Robot:
 
     def update_left_wheel_speed(self) -> None:
         """Update left wheel speed using PID control."""
-        delta_time = self.current_time - self.previous_time
         error = self.left_target_speed - self.current_speed_left
 
         # P osa pidist proportional gain * error = proportional term
@@ -65,15 +67,15 @@ class Robot:
 
         # I osa pidist integral term
         self.integral_left += error  # kogunev error, iga kord kui runnib error suureneb
-        if delta_time > 0:
-            I_pid = (self.ki * self.integral_right) / delta_time
+        if self.delta_time > 0:
+            I_pid = (self.ki * self.integral_right) / self.delta_time
         else:
             I_pid = 0.0
 
         # d osa pidist derivative term
         derivative = error - self.prev_left_error  # kui palju error on eelisest errorist erinev
-        if delta_time > 0:
-            D_pid = (self.kd * derivative) / delta_time  # derative gain korda errori muutus
+        if self.delta_time > 0:
+            D_pid = (self.kd * derivative) / self.delta_time  # derative gain korda errori muutus
         else:
             D_pid = 0.0
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
@@ -82,22 +84,22 @@ class Robot:
         self.calculated_speed_left = correction  # apply changes
 
         self.previous_time = self.current_time
+        self.prev_speed_left = self.current_speed_left
 
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
-        delta_time = self.current_time - self.previous_time
         error = self.right_target_speed - self.current_speed_right
 
         P_pid = self.kp * error
 
         self.integral_right += error
-        if delta_time > 0:
-            I_pid = (self.ki * self.integral_right) / delta_time
+        if self.delta_time > 0:
+            I_pid = (self.ki * self.integral_right) / self.delta_time
         else:
             I_pid = 0.0
 
         derivative = error - self.prev_right_error
-        if delta_time > 0:
+        if self.delta_time > 0:
             D_pid = (self.kd * derivative)
         else:
             D_pid = 0.0
@@ -107,6 +109,7 @@ class Robot:
         self.calculated_speed_right = correction
 
         self.previous_time = self.current_time
+        self.prev_speed_right = self.current_speed_right
 
     def get_pid_corrected_left_wheel_speed(self) -> float:
         """Return the corrected left wheel speed."""
@@ -119,8 +122,9 @@ class Robot:
     def sense(self) -> None:
         """Gather sensor data."""
         self.current_time = self.robot.get_time()
-        self.current_speed_right = self.robot.get_right_motor_encoder_ticks()
-        self.current_speed_left = self.robot.get_left_motor_encoder_ticks()
+        self.delta_time = self.current_time - self.previous_time
+        self.current_speed_right = (self.robot.get_right_motor_encoder_ticks() - self.prev_speed_right) / self.delta_time
+        self.current_speed_left = (self.robot.get_left_motor_encoder_ticks() - self.prev_speed_left) / self.delta_time
 
     def plan(self) -> None:
         """Plan robot actions."""
