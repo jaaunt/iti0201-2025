@@ -64,8 +64,8 @@ class Robot:
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
 
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
-        corrected_speed = current_speed + correction
-        self.robot.set_left_motor_encoder_ticks(corrected_speed)  # apply change
+
+        self.robot.set_left_motor_encoder_ticks(current_speed + correction)  # apply changes
 
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
