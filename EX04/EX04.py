@@ -78,7 +78,7 @@ class Robot:
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
 
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
-        self.calculated_speed_left = correction  # apply changes
+        self.calculated_speed_left = correction + current_speed # apply changes
 
         self.previous_time = current_time
 
