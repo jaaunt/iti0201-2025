@@ -122,8 +122,6 @@ class Robot:
         self.current_speed_right = self.robot.get_right_motor_encoder_ticks()
         self.current_speed_left = self.robot.get_left_motor_encoder_ticks()
 
-
-
     def plan(self) -> None:
         """Plan robot actions."""
         self.update_right_wheel_speed()
