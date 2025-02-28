@@ -87,7 +87,7 @@ class Robot:
         current_speed = self.robot.get_right_motor_encoder_ticks()
 
         current_time = self.robot.get_time()
-        delta_time = current_time - self.previous_tim
+        delta_time = current_time - self.previous_time
         error = self.right_target_speed - current_speed
 
         P_pid = self.kp * error
