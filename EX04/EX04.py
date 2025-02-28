@@ -51,12 +51,13 @@ class Robot:
     def update_left_wheel_speed(self) -> None:
         """Update left wheel speed using PID control."""
         current_speed = self.get_pid_corrected_left_wheel_speed()
-        error = self.left_target_speed - current_speed
 
         current_time = self.robot.get_time()
         delta_time = current_time - self.previous_time
-        if delta_time == 0:
-            delta_time = 1
+        if delta_time > 0:
+            error = (self.left_target_speed - current_speed) / delta_time
+        else:
+            error = 0.0
 
         # P osa pidist proportional gain * error = proportional term
         P_pid = self.kp * error
@@ -67,7 +68,10 @@ class Robot:
 
         # d osa pidist derivative term
         derivative = error - self.prev_left_error  # kui palju error on eelisest errorist erinev
-        D_pid = (self.kd * derivative) / delta_time  # derative gain korda errori muutus
+        if delta_time > 0:
+            D_pid = (self.kd * derivative) / delta_time  # derative gain korda errori muutus
+        else:
+            D_pid = 0.0
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
 
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
@@ -78,12 +82,13 @@ class Robot:
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
         current_speed = self.get_pid_corrected_right_wheel_speed()
-        error = self.right_target_speed - current_speed
 
         current_time = self.robot.get_time()
         delta_time = current_time - self.previous_time
-        if delta_time == 0:
-            delta_time = 1
+        if delta_time > 0:
+            error = (self.right_target_speed - current_speed) / delta_time
+        else:
+            error = 0.0
 
         P_pid = self.kp * error
 
@@ -91,7 +96,10 @@ class Robot:
         I_pid = self.ki * self.integral_right
 
         derivative = error - self.prev_right_error
-        D_pid = (self.kd * derivative) / delta_time
+        if delta_time > 0:
+            D_pid = (self.kd * derivative) / delta_time
+        else:
+            D_pid = 0.0
         self.prev_right_error = error
 
         correction = P_pid + I_pid + D_pid
