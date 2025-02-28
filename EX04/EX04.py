@@ -75,7 +75,7 @@ class Robot:
         # d osa pidist derivative term
         derivative = error - self.prev_left_error  # kui palju error on eelisest errorist erinev
         if self.delta_time > 0:
-            D_pid = (self.kd * derivative) / self.delta_time  # derative gain korda errori muutus
+            D_pid = self.kd * (derivative / self.delta_time)  # derative gain korda errori muutus
         else:
             D_pid = 0.0
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
@@ -100,7 +100,7 @@ class Robot:
 
         derivative = error - self.prev_right_error
         if self.delta_time > 0:
-            D_pid = (self.kd * derivative) / self.delta_time
+            D_pid = self.kd * (derivative / self.delta_time)
         else:
             D_pid = 0.0
         self.prev_right_error = error
