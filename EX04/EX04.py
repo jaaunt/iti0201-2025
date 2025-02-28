@@ -1,5 +1,6 @@
 """EX04: PID Control."""
 
+
 class Robot:
     """Turtlebot robot."""
 
@@ -51,18 +52,18 @@ class Robot:
         error = self.left_target_speed - current_speed
 
         # P osa pidist proportional gain * error = proportional term
-        P = self.kp * error
+        P_pid = self.kp * error
 
         # I osa pidist integral term
         self.integral_left += error  # kogunev error, iga kord kui runnib error suureneb
-        I = self.ki * self.integral_left  # integral gain korrutada koguneva erroriga = i
+        I_pid = self.ki * self.integral_left  # integral gain korrutada koguneva erroriga = i
 
         # d osa pidist derivative term
         derivative = error - self.prev_left_error  # kui palju error on eelisest errorist erinev
-        D = self.kd * derivative  # derative gain korda errori muutus
+        D_pid = self.kd * derivative  # derative gain korda errori muutus
         self.prev_left_error = error  # jargmise calli jaoks salvesta error
 
-        correction = P + I + D  # liida koik kokku et saada palju correctima peab
+        correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
 
         self.robot.set_right_motor_encoder_ticks(current_speed + correction)  # apply changes
 
