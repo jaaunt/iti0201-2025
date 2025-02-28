@@ -29,6 +29,10 @@ class Robot:
         self.calculated_speed_left = 0.0
         self.calculated_speed_right = 0.0
 
+        self.current_time = 0.0
+        self.current_speed_left = 0.0
+        self.current_speed_right = 0.0
+
     def set_pid(self, kp: float = 1.0, ki: float = 0.1, kd: float = 0.05) -> None:
         """Set the PID controller gains for the robot's wheel speed control.
 
@@ -53,11 +57,8 @@ class Robot:
 
     def update_left_wheel_speed(self) -> None:
         """Update left wheel speed using PID control."""
-        current_speed = self.robot.get_left_motor_encoder_ticks()
-
-        current_time = self.robot.get_time()
-        delta_time = current_time - self.previous_time
-        error = self.left_target_speed - current_speed
+        delta_time = self.current_time - self.previous_time
+        error = self.left_target_speed - self.current_speed_left
 
         # P osa pidist proportional gain * error = proportional term
         P_pid = self.kp * error
@@ -80,15 +81,12 @@ class Robot:
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
         self.calculated_speed_left = correction  # apply changes
 
-        self.previous_time = current_time
+        self.previous_time = self.current_time
 
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
-        current_speed = self.robot.get_right_motor_encoder_ticks()
-
-        current_time = self.robot.get_time()
-        delta_time = current_time - self.previous_time
-        error = self.right_target_speed - current_speed
+        delta_time = self.current_time - self.previous_time
+        error = self.right_target_speed - self.current_speed_right
 
         P_pid = self.kp * error
 
@@ -108,7 +106,7 @@ class Robot:
         correction = P_pid + I_pid + D_pid
         self.calculated_speed_right = correction
 
-        self.previous_time = current_time
+        self.previous_time = self.current_time
 
     def get_pid_corrected_left_wheel_speed(self) -> float:
         """Return the corrected left wheel speed."""
@@ -120,6 +118,11 @@ class Robot:
 
     def sense(self) -> None:
         """Gather sensor data."""
+        self.current_time = self.robot.get_time()
+        self.current_speed_right = self.robot.get_right_motor_encoder_ticks()
+        self.current_speed_left = self.robot.get_left_motor_encoder_ticks()
+
+
 
     def plan(self) -> None:
         """Plan robot actions."""
