@@ -64,7 +64,7 @@ class Robot:
 
         correction = P + I + D  # liida koik kokku et saada palju correctima peab
 
-        self.robot.set_left_motor_speed(correction)  # apply it
+        self.robot.set_right_motor_encoder_ticks(current_speed + correction)  # apply changes
 
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
@@ -81,7 +81,7 @@ class Robot:
         self.prev_right_error = error
 
         correction = P + I + D
-        self.robot.set_right_motor_speed(correction)
+        self.robot.set_right_motor_encoder_ticks(current_speed + correction)
 
     def get_pid_corrected_left_wheel_speed(self) -> float:
         """Return the corrected left wheel speed."""
