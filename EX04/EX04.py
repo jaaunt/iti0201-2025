@@ -72,16 +72,16 @@ class Robot:
         current_speed = self.get_pid_corrected_right_wheel_speed()
         error = self.right_target_speed - current_speed
 
-        P = self.kp * error
+        P_pid = self.kp * error
 
         self.integral_right += error
-        I = self.ki * self.integral_right
+        I_pid = self.ki * self.integral_right
 
         derivative = error - self.prev_right_error
-        D = self.kd * derivative
+        D_pid = self.kd * derivative
         self.prev_right_error = error
 
-        correction = P + I + D
+        correction = P_pid + I_pid + D_pid
         self.robot.set_right_motor_encoder_ticks(current_speed + correction)
 
     def get_pid_corrected_left_wheel_speed(self) -> float:
