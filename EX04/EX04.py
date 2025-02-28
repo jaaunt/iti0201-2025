@@ -82,6 +82,8 @@ class Robot:
 
         current_time = self.robot.get_time()
         delta_time = current_time - self.previous_time
+        if delta_time == 0:
+            delta_time = 1
 
         P_pid = self.kp * error
 
