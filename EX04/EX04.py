@@ -53,7 +53,7 @@ class Robot:
 
     def update_left_wheel_speed(self) -> None:
         """Update left wheel speed using PID control."""
-        current_speed = self.get_pid_corrected_left_wheel_speed()
+        current_speed = self.robot.get_left_motor_encoder_ticks()
 
         current_time = self.robot.get_time()
         delta_time = current_time - self.previous_time
