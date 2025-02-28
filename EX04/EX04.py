@@ -119,9 +119,9 @@ class Robot:
 
     def sense(self) -> None:
         """Gather sensor data."""
+        self.previous_time = self.current_time
         self.current_time = self.robot.get_time()
         self.delta_time = self.current_time - self.previous_time
-        self.previous_time = self.current_time
         if self.delta_time > 0:
             self.current_speed_right = (self.robot.get_right_motor_encoder_ticks() - self.prev_speed_right) / self.delta_time
             self.current_speed_left = (self.robot.get_left_motor_encoder_ticks() - self.prev_speed_left) / self.delta_time
