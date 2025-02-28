@@ -65,7 +65,7 @@ class Robot:
 
         correction = P_pid + I_pid + D_pid  # liida koik kokku et saada palju correctima peab
 
-        self.robot.set_right_motor_encoder_ticks(current_speed + correction)  # apply changes
+        self.robot.set_right_motor_encoder_ticks(current_speed + correction)  # apply change
 
     def update_right_wheel_speed(self) -> None:
         """Update right wheel speed using PID control."""
