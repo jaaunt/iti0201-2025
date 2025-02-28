@@ -73,10 +73,7 @@ class Robot:
 
         # I osa pidist integral term
         self.integral_left += error * self.delta_time  # kogunev error, iga kord kui runnib error suureneb
-        if self.delta_time > 0:
-            I_pid = (self.ki * self.integral_left) / self.delta_time
-        else:
-            I_pid = 0.0
+        I_pid = (self.ki * self.integral_left)
 
         # d osa pidist derivative term
         derivative = error - self.prev_left_error  # kui palju error on eelisest errorist erinev
@@ -96,10 +93,7 @@ class Robot:
         P_pid = self.kp * error
 
         self.integral_right += error * self.delta_time
-        if self.delta_time > 0:
-            I_pid = (self.ki * self.integral_right) / self.delta_time
-        else:
-            I_pid = 0.0
+        I_pid = (self.ki * self.integral_right)
 
         derivative = error - self.prev_right_error
         if self.delta_time > 0:
