@@ -18,8 +18,8 @@ class Robot:
         self.left_target_speed = 0.0
         self.right_target_speed = 0.0
 
-        self.prev_left_error = 0.0
-        self.prev_right_error = 0.0
+        self.prev_left_error = None
+        self.prev_right_error = None
 
         self.integral_left = 0.0
         self.integral_right = 0.0
