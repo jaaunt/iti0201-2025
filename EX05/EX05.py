@@ -16,7 +16,7 @@ class Robot:
 
         self.lidar_range_list = []
         self.time = 0
-        self.orientation =  0
+        self.orientation = 0
         self.lidar_point_cloud = []
         self.left_encoder_ticks = 0
         self.right_encoder_ticks = 0
@@ -25,10 +25,9 @@ class Robot:
 
     def get_triangle_vertex_coordinates(self) -> tuple | None:
         """Return the triangle corner coordinates.
-
         Based on lidar range list and current robot position, calculate the world
         position of the equilateral triangle corner, and return coordinates of
-	x, y.
+        x, y.
 
         Logic:
         - This method uses lidar data to find the two objects that form the base of
@@ -43,7 +42,7 @@ class Robot:
         Returns:
             A tuple of two tuples representing the (x, y) world coordinates of the
             two possible equilateral triangle's corners.
-	    (i.e., ((x1, y1), (x2, y2)))
+            (i.e., ((x1, y1), (x2, y2)))
             Returns `None` if no valid triangle corner can be detected.
         """
         if len(self.lidar_point_cloud) < 2:
@@ -65,7 +64,7 @@ class Robot:
         base_length = math.dist((x1_w, y1_w), (x2_w, y2_w))  # leia korgus
         height = (math.sqrt(3) / 2) * base_length
 
-        dx, dy = x2_w - x1_w, y2_w - y1_w # # leia viimane vertex
+        dx, dy = x2_w - x1_w, y2_w - y1_w  # leia viimane vertex
         perp_x, perp_y = -dy, dx
         norm = math.sqrt(perp_x ** 2 + perp_y ** 2)
         perp_x /= norm
@@ -103,7 +102,6 @@ class Robot:
         self.lidar_point_cloud = self.robot.get_lidar_point_cloud()
         self.left_encoder_ticks = self.robot.get_left_motor_encoder_ticks()
         self.right_encoder_ticks = self.robot.get_right_motor_encoder_ticks()
-
 
     def plan(self) -> None:
         """Plan the robot's actions.
