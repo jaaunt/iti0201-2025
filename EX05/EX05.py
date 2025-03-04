@@ -47,9 +47,6 @@ class Robot:
             (i.e., ((x1, y1), (x2, y2)))
             Returns `None` if no valid triangle corner can be detected.
         """
-        if len(self.lidar_point_cloud) < 2:
-            return None  # need at least two objects
-
         sorted_objects = sorted(self.lidar_point_cloud, key=lambda p: p[0])[:2]
         (x1_r, y1_r), (x2_r, y2_r) = sorted_objects  # get the 2 closest
 
