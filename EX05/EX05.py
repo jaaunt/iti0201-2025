@@ -35,14 +35,14 @@ class Robot:
           triangle (vertex)
         - Based on the found objects transform them to world frame coordinates and
           calculate triangle corner coordinates (there are two solutions since the
-	  equilateral triangle can be formed on both sides of the line connecting
-	  the two objects).
+          equilateral triangle can be formed on both sides of the line connecting
+          the two objects).
         - The robot's orientation and position are used to compute the actual world
           coordinates of the corner.
 
         Returns:
             A tuple of two tuples representing the (x, y) world coordinates of the
-	    two possible equilateral triangle's corners.
+            two possible equilateral triangle's corners.
 	    (i.e., ((x1, y1), (x2, y2)))
             Returns `None` if no valid triangle corner can be detected.
         """
@@ -86,8 +86,8 @@ class Robot:
 
         Returns:
             A tuple representing the (x, y, theta) robot's pose. Theta is the
-	    angle between robot's starting direction and its current direction
-	    (in radians, with -pi < theta <= pi).
+            angle between robot's starting direction and its current direction
+            (in radians, with -pi < theta <= pi).
         """
         return self.robot_pose
 
