@@ -111,7 +111,7 @@ class Robot:
         Process the data collected during sensing and decide the next course
         of action for the robot.
         """
-        pass
+        self.robot_pose = self.get_robot_pose()
 
     def act(self) -> None:
         """Execute planned actions.
