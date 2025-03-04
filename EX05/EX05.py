@@ -37,7 +37,7 @@ class Robot:
         objects = []
         angle_increment = self.robot.get_lidar_angle_increment()
         for i, distance in enumerate(lidar_data):
-            if 0.1 < distance < 2.0:  # Assuming relevant object detection range
+            if 0.1 < distance < 2.0:
                 angle = i * angle_increment - pi / 2
                 x_r = distance * cos(angle)
                 y_r = distance * sin(angle)
@@ -59,13 +59,10 @@ class Robot:
         (x1, y1), (x2, y2) = self.objects[:2]
         side_length = sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
 
-        # Compute midpoint
         xm, ym = (x1 + x2) / 2, (y1 + y2) / 2
 
-        # Compute height of equilateral triangle
         height = (sqrt(3) / 2) * side_length
 
-        # Compute possible vertices using perpendicular vector
         dx, dy = (y2 - y1), -(x2 - x1)
         norm = sqrt(dx ** 2 + dy ** 2)
         dx, dy = dx / norm, dy / norm
