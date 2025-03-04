@@ -46,6 +46,8 @@ class Robot:
 	    (i.e., ((x1, y1), (x2, y2)))
             Returns `None` if no valid triangle corner can be detected.
         """
+        if len(self.lidar_point_cloud) < 2:
+            return None  # Need at least two objects
 
     def get_robot_pose(self) -> tuple:
         """Return the current robot pose.
