@@ -26,6 +26,7 @@ class Robot:
 
     def get_triangle_vertex_coordinates(self) -> tuple | None:
         """Return the triangle corner coordinates.
+
         Based on lidar range list and current robot position, calculate the world
         position of the equilateral triangle corner, and return coordinates of
         x, y.
