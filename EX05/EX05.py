@@ -48,40 +48,46 @@ class Robot:
             (i.e., ((x1, y1), (x2, y2)))
             Returns `None` if no valid triangle corner can be detected.
         """
-        if self.lidar_point_cloud is None:
+        if not self.lidar_point_cloud or len(self.lidar_point_cloud) < 2:
             return None
 
-        if len(self.lidar_point_cloud) < 2:
-            return None
+        # kaks laimat
+        sorted_objects = sorted(self.lidar_point_cloud, key=lambda p: math.dist((0, 0), p))[:2]
+        (x1_r, y1_r), (x2_r, y2_r) = sorted_objects
 
-        sorted_objects = sorted(self.lidar_point_cloud, key=lambda p: p[0])[:2]
-        (x1_r, y1_r), (x2_r, y2_r) = sorted_objects  # get the 2 closest
+        x_w, y_w, theta = self.get_robot_pose()
 
-        x_w, y_w, theta = self.get_robot_pose()  # affected by the last pose
-
-        x1_w = x_w + x1_r * math.cos(theta) - y1_r * math.sin(theta)  # those math tehted mis anti
+        # need imelikud antud tehted
+        x1_w = x_w + x1_r * math.cos(theta) - y1_r * math.sin(theta)
         y1_w = y_w + x1_r * math.sin(theta) + y1_r * math.cos(theta)
 
         x2_w = x_w + x2_r * math.cos(theta) - y2_r * math.sin(theta)
         y2_w = y_w + x2_r * math.sin(theta) + y2_r * math.cos(theta)
 
-        mid_x, mid_y = (x1_w + x2_w) / 2, (y1_w + y2_w) / 2  # find the midspot
+        # keskkoht
+        mid_x, mid_y = (x1_w + x2_w) / 2, (y1_w + y2_w) / 2
 
-        base_length = math.dist((x1_w, y1_w), (x2_w, y2_w))  # leia korgus
+        # korgus
+        base_length = math.dist((x1_w, y1_w), (x2_w, y2_w))
         height = (math.sqrt(3) / 2) * base_length
 
-        dx, dy = x2_w - x1_w, y2_w - y1_w  # leia viimane vertex
+        dx, dy = x2_w - x1_w, y2_w - y1_w
         perp_x, perp_y = -dy, dx
         norm = math.sqrt(perp_x ** 2 + perp_y ** 2)
+
+        if norm == 0:
+            return None  # ara jaga nulliga
+
         perp_x /= norm
         perp_y /= norm
 
-        x3_w_1 = mid_x + height * perp_x  # viimane tipp voib olla kas all voi uleval
+        # leia molemad voimalikud voib olla all voi ulevaö
+        x3_w_1 = mid_x + height * perp_x
         y3_w_1 = mid_y + height * perp_y
 
         x3_w_2 = mid_x - height * perp_x
         y3_w_2 = mid_y - height * perp_y
-        print("got called")
+
         return ((x3_w_1, y3_w_1), (x3_w_2, y3_w_2))
 
     def get_robot_pose(self) -> tuple:
