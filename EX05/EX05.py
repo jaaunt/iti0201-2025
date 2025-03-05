@@ -100,7 +100,21 @@ class Robot:
             angle between robot's starting direction and its current direction
             (in radians, with -pi < theta <= pi).
         """
-        return self.robot_pose
+        left_distance = self.left_encoder_ticks
+        right_distance = self.right_encoder_ticks
+
+        delta_distance = (right_distance + left_distance) / 2
+        delta_theta = (right_distance - left_distance)
+
+        x, y, theta = self.robot_pose
+
+        new_x = x + delta_distance * math.cos(theta + delta_theta / 2)
+        new_y = y + delta_distance * math.sin(theta + delta_theta / 2)
+        new_theta = theta + delta_theta
+
+        new_theta = (new_theta + math.pi) % (2 * math.pi) - math.pi
+
+        return (new_x, new_y, new_theta)
 
     def sense(self) -> None:
         """Gather sensor data.
