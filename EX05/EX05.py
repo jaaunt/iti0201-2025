@@ -57,7 +57,6 @@ class Robot:
         (x1_r, y1_r), (x2_r, y2_r) = sorted_objects  # get the 2 closest
 
         x_w, y_w, theta = self.get_robot_pose()  # affected by the last pose
-        print(f"Robot Pose: {self.robot_pose}")
 
         x1_w = x_w + x1_r * math.cos(theta) - y1_r * math.sin(theta)  # those math tehted mis anti
         y1_w = y_w + x1_r * math.sin(theta) + y1_r * math.cos(theta)
@@ -81,6 +80,9 @@ class Robot:
 
         x3_w_2 = mid_x - height * perp_x
         y3_w_2 = mid_y - height * perp_y
+        print(f"Sorted Objects: {sorted_objects}")
+        print(f"Robot Pose (x_w, y_w, theta): {x_w}, {y_w}, {theta}")
+        print(f"Transformed Coordinates: ({x1_w}, {y1_w}), ({x2_w}, {y2_w})")
 
         return ((x3_w_1, y3_w_1), (x3_w_2, y3_w_2))
 
@@ -115,7 +117,7 @@ class Robot:
         Process the data collected during sensing and decide the next course
         of action for the robot.
         """
-        self.robot_pose = self.get_robot_pose()
+        self.get_robot_pose()
 
     def act(self) -> None:
         """Execute planned actions.
