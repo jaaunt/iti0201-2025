@@ -47,13 +47,17 @@ class Robot:
             (i.e., ((x1, y1), (x2, y2)))
             Returns `None` if no valid triangle corner can be detected.
         """
-        if not self.lidar_point_cloud:
+        if self.lidar_point_cloud is None:
+            return None
+
+        if len(self.lidar_point_cloud) < 2:
             return None
 
         sorted_objects = sorted(self.lidar_point_cloud, key=lambda p: p[0])[:2]
         (x1_r, y1_r), (x2_r, y2_r) = sorted_objects  # get the 2 closest
 
         x_w, y_w, theta = self.get_robot_pose()  # affected by the last pose
+        print(f"Robot Pose: {self.robot_pose}")
 
         x1_w = x_w + x1_r * math.cos(theta) - y1_r * math.sin(theta)  # those math tehted mis anti
         y1_w = y_w + x1_r * math.sin(theta) + y1_r * math.cos(theta)
