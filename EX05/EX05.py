@@ -23,6 +23,7 @@ class Robot:
         self.right_encoder_ticks = 0
         self.robot_pose = (0, 0, 0)
         self.triangle_vertices = None
+        self.vertices = ()
 
     def get_triangle_vertex_coordinates(self) -> tuple | None:
         """Return the triangle corner coordinates.
@@ -80,10 +81,7 @@ class Robot:
 
         x3_w_2 = mid_x - height * perp_x
         y3_w_2 = mid_y - height * perp_y
-        print(f"Sorted Objects: {sorted_objects}")
-        print(f"Robot Pose (x_w, y_w, theta): {x_w}, {y_w}, {theta}")
-        print(f"Transformed Coordinates: ({x1_w}, {y1_w}), ({x2_w}, {y2_w})")
-
+        print("got called")
         return ((x3_w_1, y3_w_1), (x3_w_2, y3_w_2))
 
     def get_robot_pose(self) -> tuple:
@@ -111,13 +109,16 @@ class Robot:
         self.left_encoder_ticks = self.robot.get_left_motor_encoder_ticks()
         self.right_encoder_ticks = self.robot.get_right_motor_encoder_ticks()
 
+        self.get_robot_pose()
+        self.vertices = self.get_triangle_vertex_coordinates()
+
     def plan(self) -> None:
         """Plan the robot's actions.
 
         Process the data collected during sensing and decide the next course
         of action for the robot.
         """
-        self.get_robot_pose()
+        pass
 
     def act(self) -> None:
         """Execute planned actions.
