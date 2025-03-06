@@ -142,7 +142,7 @@ class Robot:
         interacting with the environment.
         """
         self.robot.set_left_motor_velocity(self.left_velocity)
-        self.robot.set_right_motor_velocity(self.right_velocity)
+        self.robot.set_right_motor_velocity(self.right_velocity)  # yup
 
 
     def spin(self) -> None:
