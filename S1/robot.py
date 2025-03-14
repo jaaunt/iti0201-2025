@@ -143,7 +143,7 @@ class Robot:
                 print("fked up situation")
 
         elif self.state == "fixing_trajectory":
-            print("I, FIX")
+            print("I,  FIX")
             if self.detected_objects[0][1] < 4.65:
                 print("I, LEFT")
                 self.left_velocity = -0.1
