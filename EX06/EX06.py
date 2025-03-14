@@ -1,7 +1,8 @@
 """EX06: Colors."""
 from __future__ import annotations
-
+from matplotlib import pyplot as plt
 import numpy as np
+from scipy.ndimage import label
 
 
 class Robot:
@@ -110,18 +111,29 @@ class Robot:
         mask = (blue_channel > green_channel) + threshold & (blue_channel > red_channel) + threshold
 
         labled_mask, lable_count = self.find_blobs(mask)
-
+        labled_mask, lable_count = label(mask)  # testimis jaoks
         if lable_count == 0:
             return None
-
         blobs = []
         for i in range(1, lable_count + 1):
             blobs_pixels = np.column_stack(np.where(labled_mask == i))
             if blobs_pixels.size == 0:
                 return None
+            print(blobs_pixels.shape)
+            print(np.min(blobs_pixels[:, 1]))
+            print(np.max(blobs_pixels[:, 1]))
+            print(np.min(blobs_pixels[:, 0]))
+            print(np.max(blobs_pixels[:, 0]))
             y_min, x_min = blobs_pixels.min(axis=0)
             y_max, x_max = blobs_pixels.max(axis=0)
             blobs.append((x_min, x_max, y_min, y_max))
+
+        plt.imshow(self.image)
+        for box in blobs:
+            x_min, x_max, y_min, y_max = box
+            plt.plot([x_min, x_max, x_max, x_min, x_min], [y_min, y_min, y_max, y_max, y_min] , 'r-', linewidth=5)
+        # plt.axis("off")
+        plt.show()
 
         return blobs if blobs else None
 
@@ -140,6 +152,7 @@ class Robot:
         Process the data collected during sensing and decide the next course
         of action for the robot.
         """
+        print(self.get_object_bounding_box_list())
 
     def act(self) -> None:
         """Execute planned actions.
