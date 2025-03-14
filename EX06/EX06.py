@@ -106,7 +106,7 @@ class Robot:
         blue_channel =self.image[:, :, 0]
         green_channel =self.image[:, :, 1]
         red_channel =self.image[:, :, 2]
-        threshold = 20
+        threshold = 50
         mask = (blue_channel > green_channel) + threshold & (blue_channel > red_channel) + threshold
 
         labled_mask, lable_count = self.find_blobs(mask)
