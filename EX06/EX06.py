@@ -102,7 +102,7 @@ class Robot:
         This method updates internal state variables based on sensor readings.
         """
         self.image = self.robot.get_camera_rgb_image()
-        self.fov = self.robot.get_camera_params()
+        self.fov = self.robot.get_camera_field_of_view()
 
     def plan(self) -> None:
         """Plan the robot's actions.
