@@ -14,11 +14,10 @@ class Robot:
           robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
-        self.time = 0
+
         self.image = None
         self.fov = None
         self.object = []
-        self.current_colour = None
 
 
     def get_object_location_list(self) -> list | None:
@@ -102,7 +101,6 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
-        self.time = self.robot.get_time()
         self.image = self.robot.get_camera_rgb_image()
         self.fov = self.robot.get_camera_params()
 
