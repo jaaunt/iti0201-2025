@@ -84,6 +84,9 @@ class Robot:
           [(x_min, x_max, y_min, y_max), ...].
           Returns `None` if no objects are detected.
         """
+        if self.image is None:
+            return None
+
         blue_channel =self.image[:, :, 0]
         green_channel =self.image[:, :, 1]
         red_channel =self.image[:, :, 2]
@@ -91,10 +94,21 @@ class Robot:
         mask = (blue_channel > green_channel) + threshold & (blue_channel > red_channel) + threshold
 
         labled_mask, lable_count = self.find_blobs(mask)
-        blobs = {}
+
+        if lable_count == 0:
+            return None
+
+        blobs = []
         for i in range(1, lable_count + 1):
-            blobs[i] = np.column_stack(np.where(labled_mask == i))
-        # x ja y osa ise
+            blobs_pixels = np.column_stack(np.where(labled_mask == i))
+            if blobs_pixels.size == 0:
+                return None
+            y_min, x_min = blobs_pixels.min(axis=0)
+            y_max, x_max = blobs_pixels.max(axis=0)
+            blobs.append((x_min, x_max, y_min, y_max))
+
+        return blobs if blobs else None
+
     def sense(self) -> None:
         """Gather sensor data.
 
