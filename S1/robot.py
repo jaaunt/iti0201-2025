@@ -14,6 +14,8 @@ class Robot:
         self.detected_objects = []
         self.robot = robot
         self.state = "init"
+        self.left_velocity = 0
+        self.right_velocity = 0
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -23,6 +25,8 @@ class Robot:
         """
         self.time = self.robot.get_time()
         self.lidar = self.robot.get_lidar_range_list()
+        self.left_motor_ticks = self.robot.get_left_motor_encoder_ticks()
+        self.right_motor_ticks = self.robot.get_right_motor_encoder_ticks()
 
         # EX03 stuff
         if self.lidar is None:
@@ -57,8 +61,10 @@ class Robot:
                 in_object = False
 
         self.detected_objects = self._filter_objects(objects)
+        print(self.detected_objects)
+        print(self.time)
 
-    #EX03 methods
+    # EX03 methods
     def get_objects_range_list(self) -> list | None:
         """Return the detected objects range list.
 
@@ -81,8 +87,6 @@ class Robot:
         """
         return self.detected_objects if self.detected_objects else None
 
-
-
     def _get_angle(self, index):
         num_points = len(self.range_list)
         fov = 2 * math.pi
@@ -90,7 +94,7 @@ class Robot:
         return index * angle_per_step
 
     def _filter_objects(self, objects):
-        min_distance_threshold = 0.5
+        min_distance_threshold = 0.2
         valid_objects = []
 
         for obj in objects:
@@ -100,56 +104,69 @@ class Robot:
         return valid_objects
 
     def plan(self) -> None:
-        """Plan the robot's actions.
-
-        Process the data collected during sensing and decide the next course
-        of action for the robot.
-        """
+        """Plan the robot's actions. Process the data collected during sensing and decide the next course of action for the robot."""
         if self.state == "init":
             print("HELLO, I ROBOT!")
+            self.state = "search"
         elif self.state == "search":
-            self.left_velocity = 0.1
-            self.right_velocity = -0.1
+            self.left_velocity = -0.5
+            self.right_velocity = 0.5
+            print("I, SEARCH")
             if len(self.detected_objects) > 0:
                 self.state = "turning_to_object"
+                print("I, FIND")
         elif self.state == "turning_to_object":
-            self.left_velocity = 0.1
-            self.right_velocity = -0.1
-            if self.detected_objects and len(self.detected_objects) > 0:
-                if self.detected_objects[0][1] == 0: # peab olema range sest muidu ei saa aru
-                    self.state = "approaching"
+            if 4.0 < self.detected_objects[0][1] < 5.5:
+                self.left_velocity = -0.1
+                self.right_velocity = 0.1
+
+            print("I, TURN")
+            if 4.7 < self.detected_objects[0][1] < 4.75:  # peab olema range sest muidu ei saa aru
+                self.state = "approaching"
+                print("I, APPROACH")
             else:
-                self.state = "searching"
+                self.state = "search"
+                print("I, GO BACK SEARCH")
 
         elif self.state == "approaching":
-            self.left_velocity = 0.1
-            self.right_velocity = 0.1
+            self.left_velocity = 1
+            self.right_velocity = 1
+            if self.detected_objects and len(self.detected_objects):
+                if 4.65 > self.detected_objects[0][1] > 4.8:
+                    self.state = "fixing_trajectory"
             if len(self.detected_objects) > 0:
-                if self.detected_objects[0][0] < 0.3: # peab olema range sest muidu ei saa aru
+                if self.detected_objects[0][0] < 0.3:  # peab olema range sest muidu ei saa aru
                     self.state = "finished"
+                    print("I, FINISHED")
             else:
-                self.state = "searching"
+                self.state = "search"
+                print("fked up situation")
+
+        elif self.state == "fixing_trajectory":
+            print("I, FIX")
+            if self.detected_objects[0][1] < 4.65:
+                print("I, LEFT")
+                self.left_velocity = -0.1
+                self.right_velocity = 0.1
+            if self.detected_objects[0][1] > 4.7:
+                print("I, RIGHT")
+                self.left_velocity = 0.1
+                self.right_velocity = -0.1
+            else:
+                self.state = "approaching"
+
         elif self.state == "finished":
             self.left_velocity = 0
             self.right_velocity = 0
-            pass
-
+            print("I, END(myself)")
 
     def act(self) -> None:
-        """Execute planned actions.
-
-        Perform the actions decided in the planning step, such as moving or
-        interacting with the environment.
-        """
+        """Execute planned actions. Perform the actions decided in the planning step, such as moving or interacting with the environment."""
         self.robot.set_left_motor_velocity(self.left_velocity)
-        self.robot.set_right_motor_velocity(self.right_velocity)  # yup
-
+        self.robot.set_right_motor_velocity(self.right_velocity)
 
     def spin(self) -> None:
-        """Spin the robot.
-
-        This is the main loop where the robot performs its sense-plan-act cycle.
-        """
+        """Spin the robot. This is the main loop where the robot performs its sense-plan-act cycle."""
         self.sense()
         self.plan()
         self.act()
