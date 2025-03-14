@@ -119,8 +119,8 @@ class Robot:
             blobs_pixels = np.column_stack(np.where(labled_mask == i))
             if blobs_pixels.size == 0:
                 return None
-            y_min, x_min = blobs_pixels.min()
-            y_max, x_max = blobs_pixels.max()
+            y_min, x_min = blobs_pixels.min(axis=0)
+            y_max, x_max = blobs_pixels.max(axis=0)
             blobs.append((x_min, x_max, y_min, y_max))
 
         return blobs if blobs else None
