@@ -38,6 +38,22 @@ class Robot:
            respect to robot orientation], ...].
           If no objects are detected, returns `None`.
         """
+        bounding_boxes = self.get_object_bounding_box_list()
+        if not bounding_boxes:
+            return None
+
+        height, width = self.image.shape
+        fov = self.fov
+
+        object_locations = []
+        for x_min, x_max, y_min, y_max in bounding_boxes:
+            x_center = (x_min + x_max) / 2
+            y_center = (y_min + y_max) / 2  # centroid otsimine basiacally see kesk punk obj
+
+            angle = ((x_center - width / 2) / (width / 2)) * (fov / 2)
+
+            object_locations.append([x_center, y_center, angle])
+        return object_locations if object_locations else None
 
     def find_blobs(self, mask):
         """
