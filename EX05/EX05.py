@@ -19,8 +19,17 @@ class Robot:
         self.WHEEL_RADIUS = 0.03575
         self.TICKS_PER_RADIANS = 508.8 / (2 * math.pi)
 
-        self.robot_x = self.robot_y = self.theta = 0.0
-        self.prev_left_ticks = self.prev_right_ticks = self.prev_time = 0
+        self.start_orientation = None
+
+        self.robot_x = 0.0
+        self.robot_y = 0.0
+        self.theta = 0.0
+
+        self.prev_left_ticks = 0
+        self.prev_right_ticks = 0
+
+        self.prev_time = self.robot.get_time()
+
         self.start_orientation = None
 
     def get_triangle_vertex_coordinates(self) -> tuple | None:
