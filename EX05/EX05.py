@@ -19,16 +19,16 @@ class Robot:
         self.WHEEL_RADIUS = 0.03575
         self.TICKS_PER_RADIANS = 508.8 / (2 * math.pi)
 
-        self.start_orientation = None
-
         self.robot_x = 0.0
         self.robot_y = 0.0
         self.theta = 0.0
 
-        self.prev_left_ticks = 0
-        self.prev_right_ticks = 0
+        self.prev_left_ticks = self.robot.get_left_motor_encoder_ticks()
+        self.prev_right_ticks = self.robot.get_right_motor_encoder_ticks()
 
         self.prev_time = self.robot.get_time()
+
+        self.lidar_data = self.robot.get_lidar_range_list()
 
         self.start_orientation = None
 
@@ -56,30 +56,30 @@ class Robot:
             Returns `None` if no valid triangle corner can be detected.
         """
         self.detected_objects = []
-        lidar = self.robot.get_lidar_range_list()
-        if lidar is None:
+        self.lidar_data = self.robot.get_lidar_range_list()
+        if self.lidar_data is None:
             return None
 
         start_index = None
         threshold = 0.1
         object_size_min = 1
 
-        for i in range(1, len(lidar)):
-            if float('inf') in (lidar[i], lidar[i - 1]):
+        for i in range(1, len(self.lidar_data)):
+            if float('inf') in (self.lidar_data[i], self.lidar_data[i - 1]):
                 start_index = None
                 continue
-            delta = lidar[i] - lidar[i - 1]
+            delta = self.lidar_data[i] - self.lidar_data[i - 1]
 
             if start_index is None and abs(delta) > threshold and delta < 0:
                 start_index = i
             elif start_index is not None and abs(delta) > threshold and delta > 0:
                 end_index = i - 1
                 if abs(end_index - start_index) >= object_size_min:
-                    object_values = lidar[start_index:end_index]
+                    object_values = self.lidar_data[start_index:end_index]
                     distance = np.min(object_values)
                     index = np.argmin(object_values)
                     center_index = start_index + index
-                    angle = (center_index / len(lidar)) * (2 * np.pi)
+                    angle = (center_index / len(self.lidar_data)) * (2 * np.pi)
                     self.detected_objects.append((distance, angle))
                 start_index = None
 
@@ -138,6 +138,7 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
+        self.lidar_data = self.robot.get_lidar_range_list()
         self.prev_time = self.robot.get_time()
         if self.start_orientation is None:
             self.start_orientation = self.robot.get_orientation()
