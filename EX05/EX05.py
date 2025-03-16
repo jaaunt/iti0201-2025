@@ -61,7 +61,8 @@ class Robot:
 
         (x1, y1), (x2, y2) = [(self.robot_x - d * math.sin(a), self.robot_y - d * math.cos(a)) for d, a in objects[:2]]
         dx, dy = (math.sqrt(3) / 2) * (y2 - y1), (math.sqrt(3) / 2) * (x2 - x1)
-        return (x1 + x2) / 2 + dx, (y1 + y2) / 2 - dy, (x1 + x2) / 2 - dx, (y1 + y2) / 2 + dy
+        return ((x1 + x2) / 2 + dx, (y1 + y2) / 2 - dy), ((x1 + x2) / 2 - dx, (y1 + y2) / 2 + dy)
+
 
     def get_robot_pose(self) -> tuple:
         """Return the current robot pose.
