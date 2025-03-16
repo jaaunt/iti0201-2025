@@ -96,14 +96,19 @@ class Robot:
             angle between robot's starting direction and its current direction
             (in radians, with -pi < theta <= pi).
         """
-        dt = self.robot.get_time() - self.prev_time
+        curr_time = self.robot.get_time()
+        dt = curr_time - self.prev_time
         if dt <= 0:
             return self.robot_x, self.robot_y, self.theta
 
         left_ticks = self.robot.get_left_motor_encoder_ticks()
         right_ticks = self.robot.get_right_motor_encoder_ticks()
-        left_vel = (left_ticks - self.prev_left_ticks) / self.TICKS_PER_RADIANS / dt
-        right_vel = (right_ticks - self.prev_right_ticks) / self.TICKS_PER_RADIANS / dt
+
+        delta_left_ticks = left_ticks - self.prev_left_ticks
+        delta_right_ticks = right_ticks - self.prev_right_ticks
+
+        left_vel = (delta_left_ticks / self.TICKS_PER_RADIANS) / dt
+        right_vel = (delta_right_ticks / self.TICKS_PER_RADIANS) / dt
 
         linear_vel = self.WHEEL_RADIUS * (left_vel + right_vel) / 2
         angular_vel = self.WHEEL_RADIUS * (right_vel - left_vel) / self.WHEEL_BASE
@@ -112,7 +117,7 @@ class Robot:
         self.robot_x += linear_vel * math.cos(self.theta) * dt
         self.robot_y += linear_vel * math.sin(self.theta) * dt
 
-        self.prev_time = self.robot.get_time()
+        self.prev_time = curr_time
         self.prev_left_ticks = left_ticks
         self.prev_right_ticks = right_ticks
 
