@@ -14,16 +14,13 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
+        self.WHEEL_BASE = 0.233
+        self.WHEEL_RADIUS = 0.03575
+        self.TICKS_PER_RADIANS = 508.8 / (2 * math.pi)
 
-        self.lidar_range_list = []
-        self.time = 0
-        self.orientation = 0
-        self.lidar_point_cloud = []
-        self.left_encoder_ticks = 0
-        self.right_encoder_ticks = 0
-        self.robot_pose = (0, 0, 0)
-        self.triangle_vertices = None
-        self.vertices = ()
+        self.robot_x = self.robot_y = self.theta = 0.0
+        self.prev_left_ticks = self.prev_right_ticks = self.prev_time = 0
+        self.start_orientation = None
 
     def get_triangle_vertex_coordinates(self) -> tuple | None:
         """Return the triangle corner coordinates.
@@ -48,47 +45,22 @@ class Robot:
             (i.e., ((x1, y1), (x2, y2)))
             Returns `None` if no valid triangle corner can be detected.
         """
-        if not self.lidar_point_cloud or len(self.lidar_point_cloud) < 2:
+        if not (lidar := self.robot.get_lidar_range_list()):
             return None
 
-        # kaks laimat
-        sorted_objects = sorted(self.lidar_point_cloud, key=lambda p: math.dist((0, 0), p))[:2]
-        (x1_r, y1_r), (x2_r, y2_r) = sorted_objects
+        objects = []
+        for i in range(1, len(lidar)):
+            if float('inf') in (lidar[i], lidar[i - 1]):
+                continue
+            if abs(lidar[i] - lidar[i - 1]) > 0.1:
+                objects.append((lidar[i], (i / len(lidar)) * (2 * np.pi)))
 
-        x_w, y_w, theta = self.get_robot_pose()
+        if len(objects) < 2:
+            return None
 
-        # need imelikud antud tehted
-        x1_w = x_w + x1_r * math.cos(theta) - y1_r * math.sin(theta)
-        y1_w = y_w + x1_r * math.sin(theta) + y1_r * math.cos(theta)
-
-        x2_w = x_w + x2_r * math.cos(theta) - y2_r * math.sin(theta)
-        y2_w = y_w + x2_r * math.sin(theta) + y2_r * math.cos(theta)
-
-        # keskkoht
-        mid_x, mid_y = (x1_w + x2_w) / 2, (y1_w + y2_w) / 2
-
-        # korgus
-        base_length = math.dist((x1_w, y1_w), (x2_w, y2_w))
-        height = (math.sqrt(3) / 2) * base_length
-
-        dx, dy = x2_w - x1_w, y2_w - y1_w
-        perp_x, perp_y = -dy, dx
-        norm = math.sqrt(perp_x ** 2 + perp_y ** 2)
-
-        if norm == 0:
-            return None  # ara jaga nulliga
-
-        perp_x /= norm
-        perp_y /= norm
-
-        # leia molemad voimalikud voib olla all voi ulevaö
-        x3_w_1 = mid_x + height * perp_x
-        y3_w_1 = mid_y + height * perp_y
-
-        x3_w_2 = mid_x - height * perp_x
-        y3_w_2 = mid_y - height * perp_y
-
-        return ((x3_w_1, y3_w_1), (x3_w_2, y3_w_2))
+        (x1, y1), (x2, y2) = [(self.robot_x - d * math.sin(a), self.robot_y - d * math.cos(a)) for d, a in objects[:2]]
+        dx, dy = (math.sqrt(3) / 2) * (y2 - y1), (math.sqrt(3) / 2) * (x2 - x1)
+        return (x1 + x2) / 2 + dx, (y1 + y2) / 2 - dy, (x1 + x2) / 2 - dx, (y1 + y2) / 2 + dy
 
     def get_robot_pose(self) -> tuple:
         """Return the current robot pose.
@@ -100,21 +72,22 @@ class Robot:
             angle between robot's starting direction and its current direction
             (in radians, with -pi < theta <= pi).
         """
-        left_distance = self.left_encoder_ticks
-        right_distance = self.right_encoder_ticks
+        if (dt := self.robot.get_time() - self.prev_time) <= 0:
+            return self.robot_x, self.robot_y, self.theta
 
-        delta_distance = (right_distance + left_distance) / 2
-        delta_theta = (right_distance - left_distance)
+        left_ticks, right_ticks = self.robot.get_left_motor_encoder_ticks(), self.robot.get_right_motor_encoder_ticks()
+        left_vel, right_vel = [(ticks - prev) / self.TICKS_PER_RADIANS / dt for ticks, prev in
+                               zip((left_ticks, right_ticks), (self.prev_left_ticks, self.prev_right_ticks))]
 
-        x, y, theta = self.robot_pose
+        linear_vel = self.WHEEL_RADIUS * (left_vel + right_vel) / 2
+        angular_vel = self.WHEEL_RADIUS * (right_vel - left_vel) / self.WHEEL_BASE
 
-        new_x = x + delta_distance * math.cos(theta + delta_theta / 2)
-        new_y = y + delta_distance * math.sin(theta + delta_theta / 2)
-        new_theta = theta + delta_theta
+        self.theta = ((self.theta + angular_vel * dt + math.pi) % (2 * math.pi)) - math.pi
+        self.robot_x += linear_vel * math.cos(self.theta) * dt
+        self.robot_y += linear_vel * math.sin(self.theta) * dt
 
-        new_theta = (new_theta + math.pi) % (2 * math.pi) - math.pi
-
-        return (new_x, new_y, new_theta)
+        self.prev_time, self.prev_left_ticks, self.prev_right_ticks = self.robot.get_time(), left_ticks, right_ticks
+        return self.robot_x, self.robot_y, self.theta
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -122,15 +95,10 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
-        self.lidar_range_list = self.robot.get_lidar_range_list()
-        self.time = self.robot.get_time()
-        self.orientation = self.robot.get_orientation()
-        self.lidar_point_cloud = self.robot.get_lidar_point_cloud()
-        self.left_encoder_ticks = self.robot.get_left_motor_encoder_ticks()
-        self.right_encoder_ticks = self.robot.get_right_motor_encoder_ticks()
-
-        self.get_robot_pose()
-        self.vertices = self.get_triangle_vertex_coordinates()
+        self.prev_time = self.robot.get_time()
+        if self.start_orientation is None:
+            self.start_orientation = self.robot.get_orientation()
+        self.theta = self.robot.get_orientation() - self.start_orientation
 
     def plan(self) -> None:
         """Plan the robot's actions.
