@@ -108,9 +108,6 @@ class Robot:
         return blobs if blobs else None
 
     def update_cube_objects(self):
-        """Look though the objects to find blue cubes and update the list for collection.
-        Returns:
-            List of object bounding boxes that fit the criteria of a cube."""
         boxes = self.get_object_bounding_box_list()
         if boxes is None:
             return None
@@ -171,7 +168,12 @@ class Robot:
             Returns `None` if no cubes are detected.
         """
         self.blue_cubes = self.update_cube_objects()
-        return self.blue_cubes
+        #return self.blue_cubes
+        # Katsetus all
+        if self.blue_cubes:
+            return self.blue_cubes
+        else:
+            return None
 
     def sense(self) -> None:
         """Gather sensor data.
