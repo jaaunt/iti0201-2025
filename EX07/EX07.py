@@ -169,7 +169,10 @@ class Robot:
             Returns `None` if no cubes are detected.
         """
         self.blue_cubes = self.update_cube_objects()
-        return self.blue_cubes
+        if self.blue_cubes is []:
+            return None
+        else:
+            return self.blue_cubes
 
 
     def sense(self) -> None:
