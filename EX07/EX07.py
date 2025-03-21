@@ -4,7 +4,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-
 class Robot:
     """Turtlebot robot."""
 
@@ -109,6 +108,9 @@ class Robot:
         return blobs if blobs else None
 
     def update_cube_objects(self):
+        """Look though the objects to find blue cubes and update the list for collection.
+        Returns:
+            List of object bounding boxes that fit the criteria of a cube."""
         boxes = self.get_object_bounding_box_list()
         if boxes is None:
             return None
@@ -132,10 +134,7 @@ class Robot:
 
             if diffrence <= threshold:
                 something.append(box)
-        if something is []:
-            return None
-        else:
-            return something
+        return something
 
     def get_cube_objects(self) -> list | None:
         """Return the bounding boxes for detected objects.
@@ -173,7 +172,6 @@ class Robot:
         """
         self.blue_cubes = self.update_cube_objects()
         return self.blue_cubes
-
 
     def sense(self) -> None:
         """Gather sensor data.
