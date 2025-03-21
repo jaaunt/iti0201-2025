@@ -132,7 +132,10 @@ class Robot:
 
             if diffrence <= threshold:
                 something.append(box)
-        return something
+        if something is []:
+            return None
+        else:
+            return something
 
     def get_cube_objects(self) -> list | None:
         """Return the bounding boxes for detected objects.
@@ -169,10 +172,7 @@ class Robot:
             Returns `None` if no cubes are detected.
         """
         self.blue_cubes = self.update_cube_objects()
-        if self.blue_cubes is []:
-            return None
-        else:
-            return self.blue_cubes
+        return self.blue_cubes
 
 
     def sense(self) -> None:
