@@ -108,8 +108,11 @@ class Robot:
         return blobs if blobs else None
 
     def update_cube_objects(self):
-        """Gets a list of bounding boxes and looks though them looking for objects that could be cubes.
-        Adding them to a list and returning them."""
+        """Collect blue boxes to a list.
+
+        Gets a list of bounding boxes and looks though them looking for objects that could be cubes.
+        Adding them to a list and returning them.
+        """
         boxes = self.get_object_bounding_box_list()
         if boxes is None:
             return None
