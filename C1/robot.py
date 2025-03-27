@@ -1,4 +1,8 @@
 """C1."""
+from __future__ import annotations
+from matplotlib import pyplot as plt
+import numpy as np
+from scipy.ndimage import label
 
 class Robot:
     """Turtlebot robot."""
@@ -10,6 +14,11 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
+
+        self.image = None
+        self.fov = None
+        self.object = []
+
 
     def get_object_location_list(self) -> list | None:
         """Calculate the coordinates for detected object center and corresponding angle.
@@ -133,6 +142,8 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
+        self.image = self.robot.get_camera_rgb_image()
+        self.fov = self.robot.get_camera_field_of_view()
 
     def plan(self) -> None:
         """Plan the robot's actions.
