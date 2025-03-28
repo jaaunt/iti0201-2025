@@ -5,7 +5,7 @@ class Robot:
         self.robot = robot
         self.found_object = False
         self.object_centered = False
-        self.blue_percentage_threshold = 0.2  # 20%
+        self.blue_percentage_threshold = 0.4
 
     def detect_blue_object(self) -> bool:
         image = self.robot.get_camera_rgb_image()
