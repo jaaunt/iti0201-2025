@@ -25,8 +25,8 @@ class Robot:
 
     def spin(self) -> None:
         """Spin to find and center the blue object."""
-        self.robot.set_left_motor_velocity(0.2)
-        self.robot.set_right_motor_velocity(-0.2)
+        self.robot.set_left_motor_velocity(-0.2)
+        self.robot.set_right_motor_velocity(0.2)
 
     def drive_forward(self) -> None:
         """Drive forward towards the object once centered."""
