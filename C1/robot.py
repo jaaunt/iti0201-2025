@@ -5,7 +5,7 @@ class Robot:
         self.robot = robot
         self.found_object = False
         self.object_centered = False
-        self.blue_percentage_threshold = 0.2
+        self.blue_percentage_threshold = 0.2  # 20%
 
     def detect_blue_object(self) -> bool:
         image = self.robot.get_camera_rgb_image()
@@ -23,12 +23,12 @@ class Robot:
         return False, 0.0, blue_percentage
 
     def turn(self) -> None:
-        self.robot.set_left_motor_velocity(-0.2)
-        self.robot.set_right_motor_velocity(0.2)
+        self.robot.set_left_motor_velocity(0.2)
+        self.robot.set_right_motor_velocity(-0.2)
 
     def drive_forward(self) -> None:
-        self.robot.set_left_motor_velocity(1)
-        self.robot.set_right_motor_velocity(1)
+        self.robot.set_left_motor_velocity(0.5)
+        self.robot.set_right_motor_velocity(0.5)
 
     def stop(self) -> None:
         self.robot.set_left_motor_velocity(0)
@@ -40,10 +40,13 @@ class Robot:
             self.object_centered = abs(angle) < 10
             if blue_percentage >= self.blue_percentage_threshold:
                 self.stop()
+                self.found_object = True  # Stop and mark object found
         else:
             self.object_centered = False
 
     def plan(self) -> None:
+        if self.found_object:  # Only plan actions if the object is found
+            return
         if self.object_centered:
             self.drive_forward()
         else:
@@ -53,6 +56,9 @@ class Robot:
         pass
 
     def spin(self) -> None:
-        self.sense()
-        self.plan()
-        self.act()
+        while True:
+            if self.found_object:  # If object found and stopped, exit loop
+                break
+            self.sense()
+            self.plan()
+            self.act()
