@@ -23,7 +23,7 @@ class Robot:
             return True, angle
         return False, 0.0
 
-    def spin(self) -> None:
+    def turn(self) -> None:
         """Spin to find and center the blue object."""
         self.robot.set_left_motor_velocity(-0.2)
         self.robot.set_right_motor_velocity(0.2)
@@ -52,15 +52,15 @@ class Robot:
         if self.object_centered:
             self.drive_forward()
         else:
-            self.spin()
+            self.turn()
 
     def act(self) -> None:
         """Execute planned actions."""
         pass
 
-    def main_loop(self) -> None:
+    def spin(self) -> None:
         """Main loop to sense, plan, and act."""
-        while True:
-            self.sense()
-            self.plan()
-            self.act()
+        self.sense()
+        self.plan()
+        self.act()
+
