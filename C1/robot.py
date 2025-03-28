@@ -30,8 +30,8 @@ class Robot:
 
     def drive_forward(self) -> None:
         """Drive forward towards the object once centered."""
-        self.robot.set_left_motor_velocity(0.5)
-        self.robot.set_right_motor_velocity(0.5)
+        self.robot.set_left_motor_velocity(1)
+        self.robot.set_right_motor_velocity(1)
 
     def stop(self) -> None:
         """Stop the robot."""
