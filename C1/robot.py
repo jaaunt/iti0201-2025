@@ -185,7 +185,7 @@ class Robot:
             "approaching": self._handle_approaching,
             "fixing_trajectory": self._handle_fixing_trajectory,
             "finished": self._handle_finished,
-        }
+        } # valid actions
 
         if self.state in state_actions:
             state_actions[self.state]()
