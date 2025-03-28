@@ -18,9 +18,9 @@ class Robot:
         self.image = self.robot.get_camera_rgb_image()
         self.fov = self.robot.get_camera_field_of_view()
         self.lidar = self.robot.get_lidar_range_list()
-        self.blue_object_angles = self.get_blue_object_angles()
+        self.blue_object_angles = self._get_blue_object_angles()
 
-    def get_blue_object_angles(self):
+    def _get_blue_object_angles(self):
         if self.image is None or self.fov is None:
             return []
 
@@ -30,7 +30,7 @@ class Robot:
         threshold = 50
 
         mask = (blue_channel > green_channel + threshold) & (blue_channel > red_channel + threshold)
-        labeled_mask, label_count = self.find_blobs(mask)
+        labeled_mask, label_count = self._find_blobs(mask)
 
         if label_count == 0:
             return []
@@ -48,7 +48,7 @@ class Robot:
 
         return angles
 
-    def find_blobs(self, mask):
+    def _find_blobs(self, mask):
         height, width = mask.shape
         labeled_mask = np.zeros_like(mask, dtype=np.uint32)
         label_id = 1
@@ -74,28 +74,28 @@ class Robot:
     def plan(self) -> None:
         """Plan the robot's actions."""
         state_actions = {
-            "init": self.handle_init,
-            "search": self.handle_search,
-            "turning": self.handle_turning,
-            "approaching": self.handle_approaching,
-            "fixing_trajectory": self.handle_fixing_trajectory,
-            "finished": self.handle_finished,
+            "init": self._handle_init,
+            "search": self._handle_search,
+            "turning": self._handle_turning,
+            "approaching": self._handle_approaching,
+            "fixing_trajectory": self._handle_fixing_trajectory,
+            "finished": self._handle_finished,
         }
 
         if self.state in state_actions:
             state_actions[self.state]()
 
-    def handle_init(self):
+    def _handle_init(self):
         print("HELLO, I ROBOT!")
         self.state = "search"
 
-    def handle_search(self):
+    def _handle_search(self):
         self.left_velocity = -5
         self.right_velocity = 5
         if self.blue_object_angles:
             self.state = "turning"
 
-    def handle_turning(self):
+    def _handle_turning(self):
         if not self.blue_object_angles:
             self.state = "search"
             return
@@ -107,13 +107,13 @@ class Robot:
         else:
             self.state = "approaching"
 
-    def handle_approaching(self):
+    def _handle_approaching(self):
         self.left_velocity = 1
         self.right_velocity = 1
         if self.lidar and min(self.lidar) < 0.3:
             self.state = "finished"
 
-    def handle_fixing_trajectory(self):
+    def _handle_fixing_trajectory(self):
         if not self.blue_object_angles:
             self.state = "search"
             return
@@ -125,7 +125,7 @@ class Robot:
         else:
             self.state = "approaching"
 
-    def handle_finished(self):
+    def _handle_finished(self):
         self.left_velocity = 0
         self.right_velocity = 0
         print("I, END(myself)")
