@@ -1,5 +1,3 @@
-import numpy as np
-
 class Robot:
     """Turtlebot robot."""
 
@@ -7,42 +5,60 @@ class Robot:
         """Class initializer."""
         self.robot = robot
         self.found_object = False
-        self.object_distance = 0.0
-        self.object_angle = 0.0  # Angle to the object
+        self.object_centered = False
 
     def detect_blue_object(self) -> bool:
         """Detect a blue object using the robot's camera."""
-        image = self.robot.get_camera_rgb_image()  # Get camera image (BGRA format)
-        detected, self.object_angle = self.process_for_blue(image)  # Returns detection and angle
-        return detected
+        image = self.robot.get_camera_rgb_image()
+        detected, angle = self.process_for_blue(image)
+        return detected, angle
 
     def process_for_blue(self, image) -> tuple:
         """Process the camera image to detect blue and calculate angle."""
-        # Placeholder logic: Detect blue and compute angle (simplified)
-        blue_pixels = np.where(image[:, :, 0] > 100)  # Find blue pixels
-        if blue_pixels[0].size > 0:  # Blue object detected
-            # Calculate angle based on object position (this is a placeholder)
-            angle = np.mean(blue_pixels[1]) - (image.shape[1] / 2)  # Simple angle calculation
+        blue_pixels = np.where(image[:, :, 0] > 100)
+        if blue_pixels[0].size > 0:
+            angle = np.mean(blue_pixels[1]) - (image.shape[1] / 2)
             return True, angle
         return False, 0.0
 
-    def drive_towards_object(self) -> None:
-        """Drive towards the detected blue object."""
-        # Calculate turning speed based on angle
-        turn_speed = self.object_angle * 0.005  # Adjust factor as needed
-        self.robot.set_left_motor_velocity(0.5 - turn_speed)
-        self.robot.set_right_motor_velocity(0.5 + turn_speed)
+    def spin(self) -> None:
+        """Spin to find and center the blue object."""
+        self.robot.set_left_motor_velocity(0.2)
+        self.robot.set_right_motor_velocity(-0.2)
 
-    def stop_in_front_of_object(self) -> None:
-        """Stop the robot in front of the blue object."""
+    def drive_forward(self) -> None:
+        """Drive forward towards the object once centered."""
+        self.robot.set_left_motor_velocity(0.5)
+        self.robot.set_right_motor_velocity(0.5)
+
+    def stop(self) -> None:
+        """Stop the robot."""
         self.robot.set_left_motor_velocity(0)
         self.robot.set_right_motor_velocity(0)
 
-    def search_for_object(self) -> None:
-        """Turn the robot to search for the blue object."""
-        self.robot.set_left_motor_velocity(-0.2)
-        self.robot.set_right_motor_velocity(0.2)
-
     def sense(self) -> None:
         """Gather sensor data."""
-        self.found_object = self.detect_blue_object()
+        detected, angle = self.detect_blue_object()
+        if detected:
+            # Check if object is centered
+            self.object_centered = abs(angle) < 10
+        else:
+            self.object_centered = False
+
+    def plan(self) -> None:
+        """Plan robot's actions."""
+        if self.object_centered:
+            self.drive_forward()
+        else:
+            self.spin()
+
+    def act(self) -> None:
+        """Execute planned actions."""
+        pass
+
+    def main_loop(self) -> None:
+        """Main loop to sense, plan, and act."""
+        while True:
+            self.sense()
+            self.plan()
+            self.act()
