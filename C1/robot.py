@@ -119,7 +119,7 @@ class Robot:
             return
 
         target_angle = self.blue_object_angles[0]
-        if abs(target_angle) > 0.1:
+        if abs(target_angle) > 0.3:
             self.left_velocity = -0.1 if target_angle > 0 else 0.1
             self.right_velocity = 0.1 if target_angle > 0 else -0.1
         else:
