@@ -28,7 +28,7 @@ class Robot:
         self.left_motor_ticks = self.robot.get_left_motor_encoder_ticks()
         self.right_motor_ticks = self.robot.get_right_motor_encoder_ticks()
 
-        # EX03 stuff
+        # EX03 stuff yep
         if self.lidar is None:
             print("Lidar data is NULL!")
             self.range_list = []
