@@ -23,8 +23,8 @@ class Robot:
         return False, 0.0, blue_percentage
 
     def turn(self) -> None:
-        self.robot.set_left_motor_velocity(0.2)
-        self.robot.set_right_motor_velocity(-0.2)
+        self.robot.set_left_motor_velocity(-0.2)
+        self.robot.set_right_motor_velocity(0.2)
 
     def drive_forward(self) -> None:
         self.robot.set_left_motor_velocity(0.5)
