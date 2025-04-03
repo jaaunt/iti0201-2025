@@ -61,32 +61,6 @@ class Robot:
 
     def update_map(self):
         """Update the map representation."""
-        if not self.lidar_data:
-            return
-
-        x, y = self.position
-        adjacencies = []
-
-        # voimalikud suunad
-        directions = {
-            "front": (0, 1),
-            "right": (1, 0),
-            "left": (-1, 0),
-            "back": (0, -1)
-        }
-
-        # lidar dataga vahi kas saab sinna liikuda
-        for direction, (dx, dy) in directions.items():
-            distance = self.lidar_data.get(direction, 0)
-            if distance >= self.grid_size:
-                new_cell = (x + dx, y + dy)
-                self.traversable_cells.add(new_cell)
-                adjacencies.append(new_cell)
-
-        self.map[self.position] = adjacencies
-
-        # parast mapp vota mapitud need maha
-        self.unmapped_cells = self.unmapped_cells.difference(self.traversable_cells)
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -96,9 +70,6 @@ class Robot:
         """
         self.position = self.robot.get_current_position()
         self.lidar_data = self.robot.get_lidar_range_list()
-
-        self.traversable_cells.add(self.position)
-        self.unmapped_cells.add(self.position)
 
     def plan(self) -> None:
         """Plan the robot's actions.
