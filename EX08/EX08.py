@@ -60,7 +60,7 @@ class Robot:
         return self.map
 
     def update_map(self) -> None:
-        """Update the map representation with new sensor data."""
+        """Update the map with new data."""
         if self.lidar_data:
             x, y = self.position
             neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
