@@ -14,6 +14,8 @@ class Robot:
         self.traversable_cells = set()
         self.unmapped_cells = set()
         self.grid_size = 0.615
+        self.position = None
+        self.lidar_data = None
 
     def get_traversable_cells(self) -> list:
         """Get a list of all known traversable cells in the map.
@@ -55,27 +57,22 @@ class Robot:
             {(int, int): [(int, int), ...]}: A dictionary where keys are cells (x, y)
             and values are lists of neighboring cells (x, y).
         """
-        position = self.robot.get_current_position()
-        lidar_data = self.robot.get_lidar_range_list()
+        return self.map
 
-        if position not in self.traversable_cells:
-            self.traversable_cells.add(position)
-            self.unmapped_cells.add(position)
-
-        if lidar_data:
-            x, y = position
+    def update_map(self) -> None:
+        """Update the map representation with new sensor data."""
+        if self.lidar_data:
+            x, y = self.position
             neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
 
             for nx, ny in neighbors:
                 if (nx, ny) not in self.traversable_cells:
                     self.unmapped_cells.add((nx, ny))
 
-            if position in self.unmapped_cells:
-                self.unmapped_cells.remove(position)
+            if self.position in self.unmapped_cells:
+                self.unmapped_cells.remove(self.position)
 
-            self.map[position] = [cell for cell in neighbors if cell in self.traversable_cells]
-
-        return self.map
+            self.map[self.position] = [cell for cell in neighbors if cell in self.traversable_cells]
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -83,12 +80,12 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
-        position = self.robot.get_current_position()
-        lidar_data = self.robot.get_lidar_range_list()
+        self.position = self.robot.get_current_position()
+        self.lidar_data = self.robot.get_lidar_range_list()
 
-        if position not in self.traversable_cells:
-            self.traversable_cells.add(position)
-            self.unmapped_cells.add(position)
+        if self.position not in self.traversable_cells:
+            self.traversable_cells.add(self.position)
+            self.unmapped_cells.add(self.position)
 
     def plan(self) -> None:
         """Plan the robot's actions.
