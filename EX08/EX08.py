@@ -82,7 +82,6 @@ class Robot:
         """
         self.position = self.robot.get_current_position()
         self.lidar_data = self.robot.get_lidar_range_list()
-
         if self.position not in self.traversable_cells:
             self.traversable_cells.add(self.position)
             self.unmapped_cells.add(self.position)
