@@ -14,7 +14,7 @@ class Robot:
         self.traversable_cells = set()
         self.unmapped_cells = set()
         self.grid_size = 0.615
-        self.position = None
+        self.position = (0, 0)
         self.lidar_data = None
 
     def get_traversable_cells(self) -> list:
