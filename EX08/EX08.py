@@ -59,20 +59,8 @@ class Robot:
         """
         return self.map
 
-    def update_map(self) -> None:
-        """Update the map with new data."""
-        if self.lidar_data:
-            x, y = self.position
-            neighbors = [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
-
-            for nx, ny in neighbors:
-                if (nx, ny) not in self.traversable_cells:
-                    self.unmapped_cells.add((nx, ny))
-
-            if self.position in self.unmapped_cells:
-                self.unmapped_cells.remove(self.position)
-
-            self.map[self.position] = [cell for cell in neighbors if cell in self.traversable_cells]
+    def update_map(self):
+        pass
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -82,9 +70,6 @@ class Robot:
         """
         self.position = self.robot.get_current_position()
         self.lidar_data = self.robot.get_lidar_range_list()
-        if self.position not in self.traversable_cells:
-            self.traversable_cells.add(self.position)
-            self.unmapped_cells.add(self.position)
 
     def plan(self) -> None:
         """Plan the robot's actions.
