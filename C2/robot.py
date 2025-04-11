@@ -27,7 +27,6 @@ class Robot:
         self.search_timer = 0.0
         self.max_search_duration = 10.0
 
-
     def sense(self) -> None:
         """Gather sensor data.
 
@@ -48,7 +47,6 @@ class Robot:
 
     def lidar_object_detection(self):
         """Lidar detection."""
-        # EX03 stuff yep
         if self.lidar is None:
             print("Lidar data is NULL!")
             self.range_list = []
@@ -89,7 +87,6 @@ class Robot:
         self.detected_objects = self._filter_objects(objects)
 
     def _get_color_object_angles(self, color: str):
-        """Detect multiple objects of the same color."""
         if self.image is None or self.fov is None:
             return []
 
@@ -106,14 +103,13 @@ class Robot:
             mask = (red_channel > blue_channel + threshold) & (green_channel > blue_channel + threshold)
         else:
             return []
-        
         labeled_mask, label_count = self._find_blobs(mask)
 
         if label_count == 0:
             return []
 
         height, width = self.image.shape[:2]
-        angles = []
+        object_positions = []
 
         for i in range(1, label_count + 1):
             pixels = np.column_stack(np.where(labeled_mask == i))
@@ -123,30 +119,32 @@ class Robot:
             y_max, x_max = pixels.max(axis=0)
             x_center = (x_min + x_max) / 2
 
+            # Arvutame nurga
             angle = ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
-            angles.append(angle)
-        
-        print(f"{color.capitalize()} object angles:", angles)
+            
+            # Lidariga kauguse mõõtmine objekti keskelt
+            distance = self.range_list[round(x_center)]
+            object_positions.append((angle, distance))
 
-        return angles
+        return object_positions
 
     def _find_blobs(self, mask):
         """
-        Flood fill algorithm to find objects of a specific color.
+        Flood fill algorithm to find the blue object.
 
-        :param mask: Binary mask image.
-        :return: Labeled mask and the number of labels (objects).
+        :param mask:
+        :return:
         """
         height, width = mask.shape
         labled_mask = np.zeros_like(mask, dtype=np.uint32)
 
-        label_id = 1
+        lable_id = 1
         to_visit = []
         neighbours = ((-1, 0), (1, 0), (0, -1), (0, 1))
 
         for y, x in np.argwhere(mask):
             if labled_mask[y, x] == 0:
-                labled_mask[y, x] = label_id
+                labled_mask[y, x] = lable_id
                 to_visit.append((y, x))
                 while to_visit:
                     current_y, current_x = to_visit.pop()
@@ -154,25 +152,31 @@ class Robot:
                         new_y, new_x = current_y + dy, current_x + dx
                         if 0 <= new_y < height and 0 <= new_x < width:
                             if mask[new_y, new_x] and labled_mask[new_y, new_x] == 0:
-                                labled_mask[new_y, new_x] = label_id
+                                labled_mask[new_y, new_x] = lable_id
                                 to_visit.append((new_y, new_x))
-                label_id += 1
+                lable_id += 1
 
-        return labled_mask, label_id - 1
+        return labled_mask, lable_id - 1
 
     def get_objects_range_list(self) -> list | None:
-        """Return the detected objects range list."""
+        """Return the detected objects range list.
+
+        Based on the robot's lidar range list measurements, extract objects and
+        return a list of detected objects. Each object contains the distance
+        in meters and angle in radians in terms of the scan.
+
+        The expected angle is the angle for the index that is the center of the
+        object (floored)."""
+
         return self.detected_objects if self.detected_objects else None
 
     def _get_angle(self, index):
-        """Calculate the angle of a lidar index."""
         num_points = len(self.range_list)
         fov = 2 * math.pi
         angle_per_step = fov / num_points
         return index * angle_per_step
 
     def _filter_objects(self, objects):
-        """Filter detected objects based on distance threshold."""
         min_distance_threshold = 0.2
         valid_objects = []
 
@@ -195,24 +199,44 @@ class Robot:
             state_actions[self.state]()
 
     def _handle_search(self):
-        """Search for colored objects."""
         self.left_velocity = -2.0
         self.right_velocity = 2.0
         print("SEARCHING:", self.color_order[self.current_color_index])
 
         if self.color_object_angles:
-            if -0.1 < self.color_object_angles[0] < 0.1:
-                self.left_velocity = 0.0
-                self.right_velocity = 0.0
-                self.state = "approaching"
-                print("FOUND:", self.color_order[self.current_color_index])
+            # Leia kõik objekti asukohad ja kaugused
+            closest_object = None
+            min_distance = float('inf')
+
+            for angle, distance in self.color_object_angles:
+                # Kui kaugus on väiksem, siis uuendame lähimat objekti
+                if distance < min_distance:
+                    min_distance = distance
+                    closest_object = (angle, distance)
+
+            if closest_object:
+                angle, distance = closest_object
+
+                # Kui objekt on robotile otse ees
+                if -0.1 < angle < 0.1:
+                    self.left_velocity = 0.0
+                    self.right_velocity = 0.0
+                    self.state = "approaching"
+                    print(f"FOUND: {self.color_order[self.current_color_index]} at distance {distance}")
+                else:
+                    # Pööra objekti poole
+                    if angle > 0:
+                        self.left_velocity = 1.0
+                        self.right_velocity = -1.0  # Pööra paremale
+                    else:
+                        self.left_velocity = -1.0
+                        self.right_velocity = 1.0  # Pööra vasakule
 
     def _next_color(self):
-        """Switch to the next color in the sequence."""
         self.current_color_index = (self.current_color_index + 1) % len(self.color_order)
 
     def handle_no_colour(self):
-        """Skip current color if not found in time."""
+        """Check if the current color is missing too long and skip it."""
         current_time = self.robot.get_time()
         timestep = current_time - self.previous_time
         self.previous_time = current_time
@@ -229,9 +253,8 @@ class Robot:
             self.search_timer = 0
 
     def _handle_approaching(self):
-        """Move towards detected object."""
-        self.left_velocity = 1.5
-        self.right_velocity = 1.5
+        self.left_velocity = 2.5
+        self.right_velocity = 2.5
 
         if not self.range_list:
             return
@@ -246,7 +269,6 @@ class Robot:
             print("I, FINISHED")
 
     def _handle_fixing_trajectory(self):
-        """Adjust orientation to face object."""
         print("I, FIX")
         if self.detected_objects[0][1] < 4.65:
             print("I, LEFT")
@@ -260,7 +282,6 @@ class Robot:
             self.state = "approaching"
 
     def _handle_finished(self):
-        """Stop and prepare for next color."""
         self.left_velocity = 0
         self.right_velocity = 0
         print(f"FINISHED: {self.color_order[self.current_color_index]}")
@@ -271,17 +292,16 @@ class Robot:
         self.state = "search"
 
     def reset_detection_data(self):
-        """Clear detection data."""
         self.detected_objects = []
         self.color_object_angles = []
 
     def act(self) -> None:
-        """Execute planned actions."""
+        """Execute planned actions. Perform the actions decided in the planning step, such as moving or interacting with the environment."""
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
 
     def spin(self) -> None:
-        """Main loop: sense-plan-act."""
+        """Spin the robot. This is the main loop where the robot performs its sense-plan-act cycle."""
         self.sense()
         self.plan()
         self.act()
