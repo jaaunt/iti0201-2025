@@ -13,12 +13,21 @@ class Robot:
         Args:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
+        self.current_color = None
         self.detected_objects = []
         self.robot = robot
         self.has_faced_object = False
         self.state = "search"
         self.left_velocity = 0
         self.right_velocity = 0
+        self.color_order = ["blue", "red", "yellow"]
+        self.current_color_index = 0
+        self.color_object_angles = []
+
+        self.previous_time = 0.0
+        self.search_timer = 0.0
+        self.max_search_duration = 10.0
+
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -34,7 +43,9 @@ class Robot:
         if self.state == "search":
             self.image = self.robot.get_camera_rgb_image()
             self.fov = self.robot.get_camera_field_of_view()
-            self.blue_object_angles = self._get_blue_object_angles()
+            self.current_color = self.color_order[self.current_color_index]
+            self.color_object_angles = self._get_color_object_angles(self.current_color)
+            self.handle_no_colour()
 
     def lidar_object_detection(self):
         """Lidar detection."""
@@ -78,7 +89,7 @@ class Robot:
 
         self.detected_objects = self._filter_objects(objects)
 
-    def _get_blue_object_angles(self):
+    def _get_color_object_angles(self, color: str):
         if self.image is None or self.fov is None:
             return []
 
@@ -87,7 +98,14 @@ class Robot:
         red_channel = self.image[:, :, 2]
         threshold = 50
 
-        mask = (blue_channel > green_channel + threshold) & (blue_channel > red_channel + threshold)
+        if color == "blue":
+            mask = (blue_channel > green_channel + threshold) & (blue_channel > red_channel + threshold)
+        elif color == "red":
+            mask = (red_channel > green_channel + threshold) & (red_channel > blue_channel + threshold)
+        elif color == "yellow":
+            mask = (red_channel > blue_channel + threshold) & (green_channel > blue_channel + threshold)
+        else:
+            return []
         labeled_mask, label_count = self._find_blobs(mask)
 
         if label_count == 0:
@@ -193,26 +211,50 @@ class Robot:
     def _handle_search(self):
         self.left_velocity = -2.0
         self.right_velocity = 2.0
-        print("SEARCH")
-        if self.blue_object_angles != []:
-            if 0.05 > self.blue_object_angles[0] > -0.05:
+        print("SEARCHING:", self.color_order[self.current_color_index])
+        if self.color_object_angles:
+            if -0.1 < self.color_object_angles[0] < 0.1:
                 self.left_velocity = 0.0
                 self.right_velocity = 0.0
                 self.state = "approaching"
-                print("I, FIND")
+                print("FOUND:", self.color_order[self.current_color_index])
+
+    def _next_color(self):
+        self.current_color_index = (self.current_color_index + 1) % len(self.color_order)
+
+    def handle_no_colour(self):
+        """Check if the current color is missing too long and skip it."""
+        current_time = self.robot.get_time()
+        timestep = current_time - self.previous_time
+        self.previous_time = current_time
+
+        if not self.color_object_angles:
+            self.search_timer += timestep
+            print(f"Looking for {self.current_color}... [{self.search_timer:.2f}s elapsed]")
+            if self.search_timer > self.max_search_duration:
+                print(f"Skipping {self.current_color} – not found in time")
+                self._next_color()
+                self.reset_detection_data()
+                self.search_timer = 0
+        else:
+            self.search_timer = 0
 
     def _handle_approaching(self):
-        self.left_velocity = 1.5
-        self.right_velocity = 1.5
-        if self.detected_objects:
-            if 4.65 > self.detected_objects[0][1] > 4.8:
-                self.state = "fixing_trajectory"
-        if self.detected_objects and self.detected_objects[0][0] < 0.3:
+        self.left_velocity = 3
+        self.right_velocity = 3
+
+        if not self.range_list:
+            return
+
+
+        center_index = 480
+        span = 9
+        front_values = self.range_list[center_index - span: center_index + span + 1]
+        valid = [d for d in front_values if d is not None and d != float('inf')]
+
+        if valid and min(valid) < 0.4:
             self.state = "finished"
             print("I, FINISHED")
-        elif not self.detected_objects:
-            self.state = "search"
-            print("fked up situation")
 
     def _handle_fixing_trajectory(self):
         print("I, FIX")
@@ -230,7 +272,16 @@ class Robot:
     def _handle_finished(self):
         self.left_velocity = 0
         self.right_velocity = 0
-        print("I, END(myself)")
+        print(f"FINISHED: {self.color_order[self.current_color_index]}")
+        self.reset_detection_data()
+        self.current_color_index = (self.current_color_index + 1) % len(self.color_order)
+        self.search_timer = 0.0
+        self.previous_time = self.robot.get_time()
+        self.state = "search"
+
+    def reset_detection_data(self):
+        self.detected_objects = []
+        self.color_object_angles = []
 
     def act(self) -> None:
         """Execute planned actions. Perform the actions decided in the planning step, such as moving or interacting with the environment."""
