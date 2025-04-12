@@ -181,14 +181,14 @@ class Robot:
                 mode = abs(angle) // ratio
                 print("mode", mode)
                 if angle > 0.0:
-                    dist = min(self.lidar[480 + int(mode) - 4 : 480 + int(mode) + 4])
+                    dist = min(self.lidar[480 + int(mode) - 4: 480 + int(mode) + 4])
                     if dist < min_dist:
                         min_dist = dist
                         cam_angle = angle
                     print(dist)
                 else:
                     print("else")
-                    dist = min(self.lidar[480 - int(mode) - 4 : 480 - int(mode) + 4])
+                    dist = min(self.lidar[480 - int(mode) - 4: 480 - int(mode) + 4])
                     if dist < min_dist:
                         min_dist = dist
                         cam_angle = angle
