@@ -18,7 +18,7 @@ class Robot:
         self.color_object_angles = []
         self.previous_time = 0.0
         self.search_timer = 0.0
-        self.max_search_duration = 20.0
+        self.max_search_duration = 100.0
         self.best_target_angle = None
         self.best_target_distance = float('inf')
         self.scan_start_angle = None
