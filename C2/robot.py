@@ -2,7 +2,6 @@
 from __future__ import annotations
 import math
 import numpy as np
-import time
 
 
 class Robot:
@@ -137,7 +136,7 @@ class Robot:
 
     def _get_front_distance(self):
         center_index = 480
-        span = 20
+        span = 10
         front_values = self.lidar[center_index - span:center_index + span + 1]
         valid = [d for d in front_values if d is not None and d != float('inf')]
         return min(valid) if valid else float('inf')
