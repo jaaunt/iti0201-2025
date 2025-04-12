@@ -227,6 +227,7 @@ class Robot:
         self.best_target_distance = float('inf')
         self.scan_start_angle = None
         self.arrival_time = None
+        self.search_timer = 0
 
     def _next_color(self):
         self.current_color_index = (self.current_color_index + 1) % len(self.color_order)
