@@ -5,6 +5,7 @@ import numpy as np
 
 
 class Robot:
+    """Turtlebot robot."""
     def __init__(self, robot: object) -> None:
         """Class initializer.
 
@@ -237,6 +238,7 @@ class Robot:
         self.previous_time = self.robot.get_time()
 
     def reset_detection_data(self):
+        """Reset the detection data after an action."""
         self.detected_objects = []
         self.color_object_angles = []
         self.best_target_angle = None
@@ -248,6 +250,7 @@ class Robot:
         self.current_color_index = (self.current_color_index + 1) % len(self.color_order)
 
     def handle_no_colour(self):
+        """Handle cases with no colour."""
         current_time = self.robot.get_time()
         timestep = current_time - self.previous_time
         self.previous_time = current_time
