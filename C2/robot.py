@@ -4,8 +4,6 @@ import math
 import numpy as np
 import time
 
-from numpy.ma.core import angle
-
 
 class Robot:
     def __init__(self, robot: object) -> None:
@@ -117,13 +115,11 @@ class Robot:
     def _handle_search(self):
         if self.scan_start_angle is None:
             self.scan_start_angle = math.degrees(self.orientation) % 360
-            print(self.scan_start_angle)
             print("Started 360° scan")
 
         self.left_velocity = -1.5
         self.right_velocity = 1.5
         current_angle = math.degrees(self.orientation) % 360
-        print(current_angle)
         if self.color_object_angles:
             if -0.1 < self.color_object_angles[0] < 0.1:
                 front_distance = self._get_front_distance()
@@ -133,7 +129,6 @@ class Robot:
                     print(f"New best target at angle {current_angle:.2f}°, distance {front_distance:.2f}m")
 
         angle_diff = (current_angle - self.scan_start_angle + 360) % 360
-        print(angle_diff)
         if angle_diff > 350 and self.best_target_angle is not None:
             print(f"Scan complete. Best target: {self.best_target_angle:.2f}° at {self.best_target_distance:.2f}m")
             self.state = "approaching"
@@ -162,8 +157,31 @@ class Robot:
             self.state = "adjusting"
 
     def _handle_adjusting(self):
+        min_dist = 100
+        cam_angle = None
         if self.color_object_angles:
-            cam_angle = self.color_object_angles[0]
+            for angle in self.color_object_angles:
+                print("angle", angle)
+                ratio = math.pi * 2 / 640
+                print("ratio", ratio)
+                mode = abs(angle) // ratio
+                print("mode", mode)
+                if angle > 0.0:
+                    dist = min(self.lidar[480+int(mode)-4:480+int(mode)+4])
+                    if dist < min_dist:
+                        min_dist = dist
+                        cam_angle = angle
+                    print(dist)
+                else:
+                    print("else")
+                    dist = min(self.lidar[480 - int(mode) - 4:480 - int(mode) + 4])
+                    if dist < min_dist:
+                        min_dist = dist
+                        cam_angle = angle
+                    print(dist)
+            #cam_angle = self.color_object_angles[0]
+
+
             print(f"Adjusting with camera. Δ{cam_angle:.4f} rad")
 
             # Kitsam piir - täpsem keskele asetamine
