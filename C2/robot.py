@@ -32,6 +32,11 @@ class Robot:
         self.state_start_time = None
 
     def sense(self) -> None:
+        """Gather sensor data.
+
+        Use the robot's sensors to collect data about its environment.
+        This method updates internal state variables based on sensor readings.
+        """
         self.time = self.robot.get_time()
         self.lidar = self.robot.get_lidar_range_list()
         self.left_motor_ticks = self.robot.get_left_motor_encoder_ticks()
@@ -105,6 +110,11 @@ class Robot:
         return labled_mask, lable_id - 1
 
     def plan(self) -> None:
+        """Plan the robot's actions.
+
+        Process the data collected during sensing and decide the next course
+        of action for the robot.
+        """
         actions = {
             "search": self._handle_search,
             "approaching": self._handle_approaching,
@@ -178,13 +188,12 @@ class Robot:
                     print(dist)
                 else:
                     print("else")
-                    dist = min(self.lidar[480 - int(mode) - 4:480 - int(mode) + 4])
+                    dist = min(self.lidar[480 - int(mode) - 4 : 480 - int(mode) + 4])
                     if dist < min_dist:
                         min_dist = dist
                         cam_angle = angle
                     print(dist)
-            #cam_angle = self.color_object_angles[0]
-
+            # cam_angle = self.color_object_angles[0]
 
             print(f"Adjusting with camera. Δ{cam_angle:.4f} rad")
 
@@ -255,10 +264,19 @@ class Robot:
             self.search_timer = 0
 
     def act(self) -> None:
+        """Execute planned actions.
+
+        Perform the actions decided in the planning step, such as moving or
+        interacting with the environment.
+        """
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
 
     def spin(self) -> None:
+        """Spin the robot.
+
+        This is the main loop where the robot performs its sense-plan-act cycle.
+        """
         self.sense()
         self.plan()
         self.act()
