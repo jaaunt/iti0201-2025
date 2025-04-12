@@ -220,6 +220,7 @@ class Robot:
         self._next_color()
         self.state = "search"
         self.search_timer = 0
+        self.previous_time = self.robot.get_time()
 
     def reset_detection_data(self):
         self.detected_objects = []
