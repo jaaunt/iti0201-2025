@@ -202,7 +202,7 @@ class Robot:
     def _handle_driving(self):
         distance = self._get_front_distance()
         print(f"Driving to target. Distance: {distance:.2f}m")
-        if distance < 0.3:
+        if distance < 0.4:
             print("Arrived at target! Waiting before next target...")
             self.left_velocity = 0
             self.right_velocity = 0
