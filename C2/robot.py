@@ -6,6 +6,11 @@ import numpy as np
 
 class Robot:
     def __init__(self, robot: object) -> None:
+        """Class initializer.
+
+        Args:
+            robot (object): An instance of a Turtlebot-like robot interface.
+        """
         self.current_color = None
         self.detected_objects = []
         self.robot = robot
@@ -166,7 +171,7 @@ class Robot:
                 mode = abs(angle) // ratio
                 print("mode", mode)
                 if angle > 0.0:
-                    dist = min(self.lidar[480+int(mode)-4:480+int(mode)+4])
+                    dist = min(self.lidar[480 + int(mode) - 4 : 480 + int(mode) + 4])
                     if dist < min_dist:
                         min_dist = dist
                         cam_angle = angle
@@ -202,7 +207,7 @@ class Robot:
     def _handle_driving(self):
         distance = self._get_front_distance()
         print(f"Driving to target. Distance: {distance:.2f}m")
-        if distance < 0.4:
+        if distance < 0.35:
             print("Arrived at target! Waiting before next target...")
             self.left_velocity = 0
             self.right_velocity = 0
