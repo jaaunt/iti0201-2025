@@ -5,8 +5,6 @@ import numpy as np
 
 
 class Robot:
-    """Robot class responsible for controlling the robot's movement toward a color-coded pole."""
-
     def __init__(self, robot: object) -> None:
         """Class initializer.
 
@@ -34,7 +32,6 @@ class Robot:
         self.state_start_time = None
 
     def sense(self) -> None:
-        """Senses the environment by getting sensor data from the robot."""
         self.time = self.robot.get_time()
         self.lidar = self.robot.get_lidar_range_list()
         self.left_motor_ticks = self.robot.get_left_motor_encoder_ticks()
@@ -48,14 +45,6 @@ class Robot:
             self.handle_no_colour()
 
     def _get_color_object_angles(self, color: str):
-        """Gets the angles of objects with the specified color.
-
-        Args:
-            color (str): The color to search for in the image.
-
-        Returns:
-            list: A list of angles where the color was found.
-        """
         if self.image is None or self.fov is None:
             return []
 
@@ -93,14 +82,6 @@ class Robot:
         return angles
 
     def _find_blobs(self, mask):
-        """Finds blobs (groups of connected pixels) in the mask.
-
-        Args:
-            mask (ndarray): A binary mask representing detected areas.
-
-        Returns:
-            tuple: A tuple of labeled mask and the count of labels.
-        """
         height, width = mask.shape
         labled_mask = np.zeros_like(mask, dtype=np.uint32)
         lable_id = 1
@@ -124,7 +105,6 @@ class Robot:
         return labled_mask, lable_id - 1
 
     def plan(self) -> None:
-        """Plans the next action based on the current state."""
         actions = {
             "search": self._handle_search,
             "approaching": self._handle_approaching,
@@ -137,7 +117,6 @@ class Robot:
             actions[self.state]()
 
     def _handle_search(self):
-        """Handles the search state."""
         if self.scan_start_angle is None:
             self.scan_start_angle = math.degrees(self.orientation) % 360
             print("Started 360° scan")
@@ -161,7 +140,6 @@ class Robot:
             self.right_velocity = 0
 
     def _get_front_distance(self):
-        """Returns the distance to the object in front of the robot."""
         center_index = 480
         span = 25
         front_values = self.lidar[center_index - span:center_index + span + 1]
@@ -169,7 +147,6 @@ class Robot:
         return min(valid) if valid else float('inf')
 
     def _handle_approaching(self):
-        """Handles the approaching state."""
         current_deg = math.degrees(self.orientation) % 360
         angle_diff = (self.best_target_angle - current_deg + 540) % 360 - 180
 
@@ -184,24 +161,34 @@ class Robot:
             self.state = "adjusting"
 
     def _handle_adjusting(self):
-        """Handles the adjusting state."""
         min_dist = 100
         cam_angle = None
         if self.color_object_angles:
             for angle in self.color_object_angles:
+                print("angle", angle)
                 ratio = math.pi * 2 / 640
+                print("ratio", ratio)
                 mode = abs(angle) // ratio
+                print("mode", mode)
                 if angle > 0.0:
                     dist = min(self.lidar[480 + int(mode) - 4 : 480 + int(mode) + 4])
                     if dist < min_dist:
                         min_dist = dist
                         cam_angle = angle
+                    print(dist)
                 else:
+                    print("else")
                     dist = min(self.lidar[480 - int(mode) - 4:480 - int(mode) + 4])
                     if dist < min_dist:
                         min_dist = dist
                         cam_angle = angle
+                    print(dist)
+            #cam_angle = self.color_object_angles[0]
 
+
+            print(f"Adjusting with camera. Δ{cam_angle:.4f} rad")
+
+            # Kitsam piir - täpsem keskele asetamine
             if cam_angle > 0.02:
                 self.left_velocity = 0.2
                 self.right_velocity = -0.2
@@ -209,29 +196,30 @@ class Robot:
                 self.left_velocity = -0.2
                 self.right_velocity = 0.2
             else:
+                print("Object centered precisely. Driving toward target.")
                 self.left_velocity = 2.5
                 self.right_velocity = 2.5
                 self.state = "driving"
         else:
+            print("Object lost during adjustment. Switching to search.")
             self.state = "search"
 
     def _handle_driving(self):
-        """Handles the driving state."""
         distance = self._get_front_distance()
+        print(f"Driving to target. Distance: {distance:.2f}m")
         if distance < 0.35:
+            print("Arrived at target! Waiting before next target...")
             self.left_velocity = 0
             self.right_velocity = 0
             self.arrival_time = self.robot.get_time()
             self.state = "waiting"
 
     def _handle_waiting(self):
-        """Handles the waiting state."""
         current_time = self.robot.get_time()
         if self.arrival_time is not None and current_time - self.arrival_time >= 5.0:
             self.state = "finished"
 
     def _handle_finished(self):
-        """Handles the finished state."""
         print(f"FINISHED: {self.color_order[self.current_color_index]}")
         self.reset_detection_data()
         self._next_color()
@@ -240,7 +228,6 @@ class Robot:
         self.previous_time = self.robot.get_time()
 
     def reset_detection_data(self):
-        """Resets the detection data to prepare for the next color search."""
         self.detected_objects = []
         self.color_object_angles = []
         self.best_target_angle = None
@@ -249,18 +236,18 @@ class Robot:
         self.arrival_time = None
 
     def _next_color(self):
-        """Moves to the next color in the color order."""
         self.current_color_index = (self.current_color_index + 1) % len(self.color_order)
 
     def handle_no_colour(self):
-        """Handles the case when no color is detected."""
         current_time = self.robot.get_time()
         timestep = current_time - self.previous_time
         self.previous_time = current_time
 
         if not self.color_object_angles:
             self.search_timer += timestep
+            print(f"Looking for {self.current_color}... [{self.search_timer:.2f}s elapsed]")
             if self.search_timer > self.max_search_duration:
+                print(f"Skipping {self.current_color} – not found in time")
                 self._next_color()
                 self.reset_detection_data()
                 self.search_timer = 0
@@ -268,12 +255,10 @@ class Robot:
             self.search_timer = 0
 
     def act(self) -> None:
-        """Sets the velocity of the robot's motors."""
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
 
     def spin(self) -> None:
-        """Executes the robot's sensing, planning, and acting loop."""
         self.sense()
         self.plan()
         self.act()
