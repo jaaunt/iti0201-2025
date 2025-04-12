@@ -6,6 +6,7 @@ import numpy as np
 
 class Robot:
     """Turtlebot robot."""
+
     def __init__(self, robot: object) -> None:
         """Class initializer.
 
