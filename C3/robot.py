@@ -137,15 +137,8 @@ class Robot:
             height = y_max - y_min
 
             aspect_ratio = height / width if width != 0 else 0
-
-            # Acceptable range for a square-like cube (tweak as needed)
             if 0.8 < aspect_ratio < 1.2:
-                focal_length = 500
-                real_cube_height = 0.05
-                if height == 0:
-                    continue
-                distance = (real_cube_height * focal_length) / height
-                return distance
+                return height  # just return pixel height now!
 
         return None
 
@@ -186,13 +179,13 @@ class Robot:
         self.left_velocity = 1.5
         self.right_velocity = 1.5
 
-        cube_distance = self._estimate_cube_distance()
+        pixel_height = self._estimate_cube_distance()
 
-        if cube_distance is not None:
-            print(f"Estimated distance: {cube_distance:.2f} m")
-            if cube_distance < 0.3:
+        if pixel_height is not None:
+            print(f"Cube pixel height: {pixel_height}")
+            if pixel_height > 100:  # tune this threshold to stop close enough
                 self.state = "finished"
-                print("I, FINISHED")
+                print("I, FINISHED — close enough.")
         else:
             self.state = "search"
             print("Lost the cube, returning to search...")
