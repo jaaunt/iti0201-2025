@@ -307,34 +307,34 @@ class Robot:
 
         print(f"{self.distance}, {self.angle}")
         if self.linear_velocity <= 0:
-            self.right_motor_torque = 0.0
-            self.left_motor_torque = 0.0
+            self.right_motor = 0.0
+            self.left_motor = 0.0
             return
         elif self.angle is None or self.distance is None or self.closest_object is None:
             print(f"shit hit the fan {self.angle}, {self.distance}, {self.closest_object}")
             # elif self.angle is None or self.closest_object is None:
-            self.right_motor_torque = -0.05
-            self.left_motor_torque = 0.05
+            self.right_motor = -0.05
+            self.left_motor = 0.05
 
         elif self.distance < 0.4:
-            self.right_motor_torque = -0.03
-            self.left_motor_torque = -0.03
+            self.right_motor = -0.03
+            self.left_motor = -0.03
         elif -0.05 < self.angle - self.theta < 0.05:
             if self.distance < 0.4:
-                self.right_motor_torque = -0.055
-                self.left_motor_torque = -0.055
+                self.right_motor = -0.055
+                self.left_motor = -0.055
                 return
             else:
-                self.right_motor_torque = 0.00105
-                self.left_motor_torque = 0.00105
+                self.right_motor = 0.00105
+                self.left_motor = 0.00105
 
         else:
             if self.angle > 0.0:
-                self.right_motor_torque = -0.06
-                self.left_motor_torque = 0.06
+                self.right_motor = -0.06
+                self.left_motor = 0.06
             else:
-                self.right_motor_torque = 0.06
-                self.left_motor_torque = -0.06
+                self.right_motor = 0.06
+                self.left_motor = -0.06
 
     def act(self) -> None:
         """Execute planned actions.
@@ -343,8 +343,8 @@ class Robot:
         interacting with the environment.
         """
         # print("There is movement", self.linear_velocity, self.right_motor_torque, self.left_motor_torque)
-        self.robot.set_right_motor_torque(self.right_motor_torque)
-        self.robot.set_left_motor_torque(self.left_motor_torque)
+        self.robot.set_left_motor_velocity(self.right_motor)
+        self.robot.set_right_motor_velocity(self.left_motor)
 
     def spin(self) -> None:
         """Spin the robot.
