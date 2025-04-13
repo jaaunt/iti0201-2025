@@ -32,9 +32,10 @@ class Robot:
 
         self.scanning = False
         self.scan_start_angle = None
-        self.rotation_threshold = 360
+        self.rotation_threshold = 350  # decreased from 360 to allow full turn detection
         self.scan_best_target = None
         self.scan_best_angle = None
+        self.scan_orientation_target = None
 
         self.last_target_box_seen = False
         self.last_state = "search"
@@ -131,7 +132,8 @@ class Robot:
                     self.target_box = self.scan_best_target
                     self.target_angle = self.calculate_angle(self.target_box)
                     self.target_distance = self.estimate_distance(self.target_box)
-                    self.state = "adjusting"
+                    self.scan_orientation_target = self.scan_best_angle
+                    self.state = "orienting"
                 else:
                     print("Scan complete – cube not found")
                     self.state = "done"
@@ -140,6 +142,19 @@ class Robot:
                 self.left_velocity = -0.5
                 self.right_velocity = 0.5
                 return
+
+        elif self.state == "orienting":
+            current_angle = orientation
+            target_angle = self.scan_orientation_target
+            angle_diff = (target_angle - current_angle + 540) % 360 - 180
+            if abs(angle_diff) > 5:
+                print(f"Rotating to face detected cube direction ({angle_diff:.2f}°)")
+                self.left_velocity = -0.5 if angle_diff > 0 else 0.5
+                self.right_velocity = 0.5 if angle_diff > 0 else -0.5
+                return
+            else:
+                print("Orientation complete. Moving to fine adjustment.")
+                self.state = "adjusting"
 
         elif self.target_box:
             if abs(self.target_angle) > 0.1:
@@ -191,7 +206,7 @@ class Robot:
             self.left_velocity = -0.5
             self.right_velocity = 0.5
 
-        elif self.state == "arrived" or self.state == "done":
+        elif self.state in ["arrived", "done"]:
             self.left_velocity = 0
             self.right_velocity = 0
 
