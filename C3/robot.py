@@ -30,7 +30,7 @@ class Robot:
         # Blind push logic
         self.blind_push = False
         self.blind_push_start = 0.0
-        self.blind_push_duration = 5.0
+        self.blind_push_duration = 10.0
         self.was_adjusting = False
 
         # Blind push trigger state
