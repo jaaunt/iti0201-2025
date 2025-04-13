@@ -22,16 +22,10 @@ class Robot:
         self.avoid_start_time = 0.0
         self.avoid_duration = 1.2
 
-        # Post-avoid straight motion
+        # After avoidance forward motion
         self.post_avoid_forward = False
         self.post_avoid_start = 0.0
         self.post_avoid_duration = 1.0
-
-        # Final push after adjustment when cube disappears
-        self.blind_push = False
-        self.blind_push_start = 0.0
-        self.blind_push_duration = 3.0
-        self.was_adjusting = False
 
     def spin(self) -> None:
         self.sense()
@@ -68,10 +62,6 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.5 or min_left < 0.5 or min_right < 0.5
 
-        # Track if we recently adjusted
-        if self.state == "adjusting":
-            self.was_adjusting = True
-
         # End avoidance
         if self.avoiding_obstacle and current_time - self.avoid_start_time >= self.avoid_duration:
             print("Avoidance time ended, continuing straight")
@@ -79,7 +69,7 @@ class Robot:
             self.post_avoid_forward = True
             self.post_avoid_start = current_time
 
-        # Start avoidance
+        # Enter avoidance
         if obstacle_close and not self.avoiding_obstacle:
             print("Obstacle detected, entering avoidance mode")
             self.avoiding_obstacle = True
@@ -96,14 +86,6 @@ class Robot:
             else:
                 self.post_avoid_forward = False
 
-        elif self.blind_push:
-            if current_time - self.blind_push_start < self.blind_push_duration:
-                self.state = "blind_push"
-            else:
-                print("Blind push complete")
-                self.blind_push = False
-                self.state = "arrived"
-
         elif self.target_box:
             if abs(self.target_angle) > 0.1:
                 if self.state != "adjusting":
@@ -117,14 +99,6 @@ class Robot:
                 if self.state != "arrived":
                     print("Arrived at cube")
                 self.state = "arrived"
-
-        elif self.target_box is None and self.was_adjusting and not self.blind_push and not self.avoiding_obstacle:
-            if min_front > 0.2:
-                print("Cube lost after adjustment, starting blind push")
-                self.blind_push = True
-                self.blind_push_start = current_time
-                self.state = "blind_push"
-                self.was_adjusting = False
 
         elif current_time - self.last_seen_time > 10:
             if self.state != "search":
@@ -150,10 +124,6 @@ class Robot:
                 self.right_velocity = 1.0
 
         elif self.state == "post_forward":
-            self.left_velocity = 1.2
-            self.right_velocity = 1.2
-
-        elif self.state == "blind_push":
             self.left_velocity = 1.2
             self.right_velocity = 1.2
 
