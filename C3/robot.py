@@ -1,5 +1,4 @@
 """C3."""
-from _future_ import annotations
 import numpy as np
 import math
 
