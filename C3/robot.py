@@ -35,6 +35,8 @@ class Robot:
         self.scan_completed = False
         self.best_box = None
 
+        self.has_pending_target = False  # << NEW FLAG
+
     def spin(self) -> None:
         self.sense()
         self.plan()
@@ -71,13 +73,14 @@ class Robot:
 
         elif self.state == "scanning":
             angle_diff = (self.current_orientation - self.scan_start_orientation + 360) % 360
-            if angle_diff >= 360 or self.scan_completed:
+            if angle_diff >= 360:
                 self.scanning = False
                 if self.best_box:
                     print("Cube found during scan")
                     self.target_box = self.best_box
                     self.target_angle = self.calculate_angle(self.target_box)
                     self.target_distance = self.estimate_distance(self.target_box)
+                    self.has_pending_target = True  # << remember cube even if it disappears
                     self.state = "adjusting"
                 else:
                     print("Scan complete – cube not found")
@@ -87,7 +90,7 @@ class Robot:
                 self.right_velocity = 0.5
                 return
 
-        elif self.target_box:
+        elif self.target_box or self.has_pending_target:
             if abs(self.target_angle) > 0.1:
                 print("Adjusting to face cube")
                 self.state = "adjusting"
@@ -97,6 +100,7 @@ class Robot:
             else:
                 print("Arrived at cube")
                 self.state = "arrived"
+                self.has_pending_target = False
 
         elif current_time - self.last_seen_time > 10:
             print("Searching for cube")
