@@ -27,7 +27,7 @@ class Robot:
         self.post_avoid_start = 0.0
         self.post_avoid_duration = 1.0
 
-        # Blind push after cube disappears
+        # Blind push logic
         self.blind_push = False
         self.blind_push_start = 0.0
         self.blind_push_duration = 3.0
@@ -68,7 +68,7 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.5 or min_left < 0.5 or min_right < 0.5
 
-        # Track if we were adjusting
+        # Remember if we just adjusted
         if self.state == "adjusting":
             self.was_adjusting = True
 
@@ -79,7 +79,7 @@ class Robot:
             self.post_avoid_forward = True
             self.post_avoid_start = current_time
 
-        # Enter avoidance
+        # Start avoidance
         if obstacle_close and not self.avoiding_obstacle:
             print("Obstacle detected, entering avoidance mode")
             self.avoiding_obstacle = True
