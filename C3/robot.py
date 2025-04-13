@@ -1,162 +1,160 @@
-"""C3."""
+from __future__ import annotations
 import numpy as np
+import math
 
 
 class Robot:
-    """Turtlebot robot."""
+    """Robot that searches for and drives to a blue cube."""
 
     def __init__(self, robot: object) -> None:
         self.robot = robot
+        self.state = "search"
         self.image = None
         self.fov = None
-        self.lidar = []
+        self.lidar = None
         self.target_box = None
+        self.last_seen_time = 0.0
+        self.target_angle = None
+        self.target_distance = None
         self.left_velocity = 0
         self.right_velocity = 0
-        self.state = "normal"
-        self.forward_ticks_remaining = 0
-        self.turning = False
-
-    def sense(self) -> None:
-        self.image = self.robot.get_camera_rgb_image()
-        self.fov = self.robot.get_camera_field_of_view()
-        self.lidar = self.robot.get_lidar_range_list()
-        self.target_box = self._find_blue_cube()
-
-    def plan(self) -> None:
-        # === HANDLE TURN + FORWARD AFTER AVOIDANCE ===
-        if self.turning:
-            print("[AVOID] Turning RIGHT 90°")
-            self.left_velocity = 2.0
-            self.right_velocity = -2.0
-            self.turning = False
-            self.forward_ticks_remaining = 20  # ≈ 2s at 10Hz
-            return
-
-        if self.forward_ticks_remaining > 0:
-            print(f"[AVOID] Driving forward... ticks left: {self.forward_ticks_remaining}")
-            self.left_velocity = 2.5
-            self.right_velocity = 2.5
-            self.forward_ticks_remaining -= 1
-            return
-
-        # === CONSTANT OBSTACLE DETECTION (WIDE SCAN) ===
-        if self._wide_object_ahead(threshold=0.5):
-            print("[OBSTACLE] Object very close ahead!")
-
-            if self.target_box is not None:
-                print("[OBSTACLE] Blue cube still visible => this is NOT the cube, must avoid")
-                self.left_velocity = 0
-                self.right_velocity = 0
-                self.turning = True
-                return
-            else:
-                print("[STOP] Possibly at cube or obstacle – stopping")
-                self.left_velocity = 0
-                self.right_velocity = 0
-                return
-
-        # === SEARCH MODE ===
-        if self.target_box is None:
-            print("[SEARCH] Cube not found – rotating in place")
-            self.left_velocity = -2.0
-            self.right_velocity = 2.0
-            return
-
-        # === ALIGN TO CUBE ===
-        angle = self._get_cube_angle(self.target_box)
-        print(f"[CUBE] Detected at angle {angle:.2f} rad")
-
-        if abs(angle) > 0.2:
-            print("[ALIGN] Adjusting to face cube")
-            self.left_velocity = 1.5 if angle > 0 else -1.5
-            self.right_velocity = -1.5 if angle > 0 else 1.5
-        else:
-            print("[FORWARD] Aligned – driving toward cube using LIDAR to stop")
-            self.left_velocity = 2.5
-            self.right_velocity = 2.5
-
-    def act(self) -> None:
-        self.robot.set_left_motor_velocity(self.left_velocity)
-        self.robot.set_right_motor_velocity(self.right_velocity)
 
     def spin(self) -> None:
+        """Main loop."""
         self.sense()
         self.plan()
         self.act()
 
-    def _find_blue_cube(self):
+    def sense(self) -> None:
+        """Gather sensor data."""
+        self.image = self.robot.get_camera_rgb_image()
+        self.fov = self.robot.get_camera_field_of_view()
+        self.lidar = self.robot.get_lidar_range_list()
+
+        boxes = self.get_cube_objects()
+        if boxes:
+            self.target_box = boxes[0]
+            self.target_angle = self.calculate_angle(self.target_box)
+            self.target_distance = self.estimate_distance(self.target_box)
+            self.last_seen_time = self.robot.get_time()
+        else:
+            self.target_box = None
+
+    def plan(self) -> None:
+        """Decide robot's next action."""
+        current_time = self.robot.get_time()
+
+        if self.target_box:
+            if abs(self.target_angle) > 0.1:
+                self.state = "adjusting"
+            elif self.target_distance > 0.25:
+                self.state = "driving"
+            else:
+                self.state = "arrived"
+        elif current_time - self.last_seen_time > 10:
+            self.state = "search"
+
+        if self.state == "adjusting":
+            # Turn toward cube
+            self.left_velocity = 0.3 if self.target_angle > 0 else -0.3
+            self.right_velocity = -self.left_velocity
+
+        elif self.state == "driving":
+            # Move forward if no obstacle
+            front_lidar = self.lidar[470:490]
+            if any(d < 0.3 for d in front_lidar if d):  # Obstacle in front
+                self.left_velocity = 0
+                self.right_velocity = 0
+            else:
+                self.left_velocity = 1.5
+                self.right_velocity = 1.5
+
+        elif self.state == "search":
+            # Rotate to find cube
+            self.left_velocity = -0.5
+            self.right_velocity = 0.5
+
+        elif self.state == "arrived":
+            # Stop
+            self.left_velocity = 0
+            self.right_velocity = 0
+
+    def act(self) -> None:
+        """Execute planned actions."""
+        self.robot.set_left_motor_velocity(self.left_velocity)
+        self.robot.set_right_motor_velocity(self.right_velocity)
+
+    # --- Image processing methods ---
+
+    def get_cube_objects(self) -> list | None:
+        """Detect blue cubes and return their bounding boxes."""
         if self.image is None:
             return None
 
-        blue = self.image[:, :, 0]
-        green = self.image[:, :, 1]
-        red = self.image[:, :, 2]
+        blue_channel = self.image[:, :, 0]
+        green_channel = self.image[:, :, 1]
+        red_channel = self.image[:, :, 2]
         threshold = 50
 
-        mask = (blue > green + threshold) & (blue > red + threshold)
-        labeled_mask, count = self._find_blobs(mask)
+        mask = (blue_channel > green_channel + threshold) & (blue_channel > red_channel + threshold)
+        labeled_mask, count = self.find_blobs(mask)
 
         if count == 0:
             return None
 
+        boxes = []
         for i in range(1, count + 1):
             pixels = np.column_stack(np.where(labeled_mask == i))
             if pixels.size == 0:
                 continue
             y_min, x_min = pixels.min(axis=0)
             y_max, x_max = pixels.max(axis=0)
-            width = x_max - x_min
-            height = y_max - y_min
 
-            if abs(width - height) < 20 and height < 150:
-                return (x_min, x_max, y_min, y_max)
+            x_len = x_max - x_min
+            y_len = y_max - y_min
+            if abs(x_len - y_len) <= 20:  # Cube-like shape
+                boxes.append((x_min, x_max, y_min, y_max))
 
-        return None
+        return boxes if boxes else None
 
-    def _get_cube_angle(self, box):
-        x_min, x_max, _, _ = box
-        width = self.image.shape[1]
-        x_center = (x_min + x_max) / 2
-        return ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
-
-    def _wide_object_ahead(self, threshold=0.5):
-        """Check front LIDAR for objects within a certain distance."""
-        if not self.lidar:
-            return False
-
-        center = len(self.lidar) // 2
-        span = len(self.lidar) // 6  # 120° instead of 180°
-        front = self.lidar[center - span:center + span + 1]
-
-        valid = [d for d in front if d and d != float("inf") and d > 0]
-        if not valid:
-            return False
-
-        min_dist = min(valid)
-        print(f"[DEBUG] Closest front object: {min_dist:.2f} m")
-
-        return min_dist < threshold
-
-    def _find_blobs(self, mask):
+    def find_blobs(self, mask):
+        """Flood fill to label connected regions."""
         height, width = mask.shape
         labeled = np.zeros_like(mask, dtype=np.uint32)
         label_id = 1
-        stack = []
+        to_visit = []
         neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
         for y, x in np.argwhere(mask):
             if labeled[y, x] == 0:
                 labeled[y, x] = label_id
-                stack.append((y, x))
-                while stack:
-                    cy, cx = stack.pop()
+                to_visit.append((y, x))
+                while to_visit:
+                    cy, cx = to_visit.pop()
                     for dy, dx in neighbors:
                         ny, nx = cy + dy, cx + dx
                         if 0 <= ny < height and 0 <= nx < width:
                             if mask[ny, nx] and labeled[ny, nx] == 0:
                                 labeled[ny, nx] = label_id
-                                stack.append((ny, nx))
+                                to_visit.append((ny, nx))
                 label_id += 1
 
         return labeled, label_id - 1
+
+    def calculate_angle(self, box):
+        """Calculate angle from camera center to bounding box center."""
+        x_min, x_max, _, _ = box
+        width = self.image.shape[1]
+        x_center = (x_min + x_max) / 2
+        angle = ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
+        return angle
+
+    def estimate_distance(self, box):
+        """Estimate distance to cube using bounding box height."""
+        _, _, y_min, y_max = box
+        height = y_max - y_min
+        if height == 0:
+            return float('inf')
+        known_height_px = 80  # approximate height at 0.3 m
+        known_distance = 0.3
+        return (known_height_px / height) * known_distance
