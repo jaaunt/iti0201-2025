@@ -16,17 +16,7 @@ class Robot:
         self.target_distance = None
         self.left_velocity = 0
         self.right_velocity = 0
-
-        # Obstacle avoidance
         self.avoiding_obstacle = False
-        self.avoid_start_time = 0.0
-        self.avoid_push_time = 0.8
-        self.avoid_cooldown_time = 2.0
-
-        # Post-avoid straight movement
-        self.post_avoid_forward = False
-        self.post_avoid_start = 0.0
-        self.post_avoid_duration = 1.0
 
     def spin(self) -> None:
         self.sense()
@@ -63,33 +53,19 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.3 or min_left < 0.35 or min_right < 0.35
 
-        # Obstacle avoidance transitions
+        # Leave avoidance mode if obstacle is gone
         if self.avoiding_obstacle and not obstacle_close:
-            if current_time - self.avoid_start_time >= self.avoid_cooldown_time:
-                print("Obstacle cleared, continuing forward")
-                self.avoiding_obstacle = False
-                self.post_avoid_forward = True
-                self.post_avoid_start = current_time
+            print("Obstacle cleared, resuming cube tracking")
+            self.avoiding_obstacle = False
 
-        if obstacle_close and not self.avoiding_obstacle:
-            print("Obstacle detected, entering avoidance mode")
-            self.avoiding_obstacle = True
-            self.avoid_start_time = current_time
+        # Enter avoidance mode if needed
+        if obstacle_close:
+            if not self.avoiding_obstacle:
+                print("Obstacle detected, entering avoidance mode")
+                self.avoiding_obstacle = True
             self.state = "avoiding"
-
-        if self.avoiding_obstacle:
-            self.state = "avoiding"
-
-        # Post-avoid straight movement
-        if self.post_avoid_forward:
-            if current_time - self.post_avoid_start < self.post_avoid_duration:
-                print("Post-avoid: moving straight")
-                self.state = "post_forward"
-            else:
-                self.post_avoid_forward = False
-
         elif self.target_box:
-            if abs(self.target_angle) > 0.1:
+            if abs(self.target_angle) > 0.1 and not self.avoiding_obstacle:
                 if self.state != "adjusting":
                     print("Adjusting to face cube")
                 self.state = "adjusting"
@@ -116,23 +92,14 @@ class Robot:
             self.right_velocity = 1.5
 
         elif self.state == "avoiding":
-            if current_time - self.avoid_start_time < self.avoid_push_time:
-                if min_left < min_right:
-                    print("Avoiding: turning right")
-                    self.left_velocity = 1.2
-                    self.right_velocity = 0.4
-                else:
-                    print("Avoiding: turning left")
-                    self.left_velocity = 0.4
-                    self.right_velocity = 1.2
-            else:
-                print("Avoiding: moving forward")
+            if min_left < min_right:
+                print("Avoiding: obstacle on left, turning right")
                 self.left_velocity = 1.2
+                self.right_velocity = 0.4
+            else:
+                print("Avoiding: obstacle on right, turning left")
+                self.left_velocity = 0.4
                 self.right_velocity = 1.2
-
-        elif self.state == "post_forward":
-            self.left_velocity = 1.2
-            self.right_velocity = 1.2
 
         elif self.state == "search":
             self.left_velocity = -0.5
