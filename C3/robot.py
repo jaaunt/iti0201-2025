@@ -19,13 +19,11 @@ class Robot:
         self.right_velocity = 0.0
 
     def sense(self) -> None:
-        print("Sensing environment...")
         self.image = self.robot.get_camera_rgb_image()
         self.fov = self.robot.get_camera_field_of_view()
         self.lidar = self.robot.get_lidar_range_list()
 
     def plan(self) -> None:
-        print(f"Current state: {self.state}")
         if self.state == "search":
             self._handle_search()
         elif self.state == "approach":
@@ -35,12 +33,10 @@ class Robot:
         elif self.state == "drive":
             self._handle_drive()
         elif self.state == "finished":
-            print("Finished task.")
             self.left_velocity = 0
             self.right_velocity = 0
 
     def act(self) -> None:
-        print(f"Acting: Left Velocity = {self.left_velocity}, Right Velocity = {self.right_velocity}")
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
 
@@ -50,79 +46,62 @@ class Robot:
         self.act()
 
     def _handle_search(self):
-        print("Searching for blue cube...")
         boxes = self._get_blue_cubes()
         if boxes:
-            print(f"Found {len(boxes)} blue object(s). Evaluating...")
             self.best_box = min(boxes, key=lambda b: self._estimate_distance(b))
-            print(f"Best box selected: {self.best_box}")
+            print("Blue cube found. Switching to approach.")
             self.state = "approach"
         else:
-            print("No blue cube found. Rotating...")
             self.left_velocity = -1.0
             self.right_velocity = 1.0
 
     def _handle_approach(self):
         if self.best_box is None:
-            print("Lost track of cube. Returning to search.")
             self.state = "search"
             return
         angle = self._bounding_box_angle(self.best_box)
-        print(f"Approaching cube at angle {angle:.2f} radians")
         if self._is_obstacle_in_path(angle):
-            print("Obstacle detected in path! Switching to avoidance.")
+            print("Obstacle in path. Switching to avoidance.")
             self.state = "avoid_obstacle"
             self.state_start_time = self.robot.get_time()
         else:
-            print("Path clear. Proceeding to drive toward cube.")
             self.state = "drive"
 
     def _handle_avoid_obstacle(self):
         direction = self._choose_clear_side()
-        print(f"Avoiding obstacle. Chosen direction: {direction}")
         t = self.robot.get_time()
         if self.state_start_time is None:
             self.state_start_time = t
 
         elapsed = t - self.state_start_time
         if elapsed < 1.5:
-            if direction == "left":
-                self.left_velocity = -1.0
-                self.right_velocity = 1.0
-            else:
-                self.left_velocity = 1.0
-                self.right_velocity = -1.0
+            self.left_velocity = -1.0 if direction == "left" else 1.0
+            self.right_velocity = 1.0 if direction == "left" else -1.0
         elif elapsed < 3.0:
-            print("Driving forward to clear obstacle...")
             self.left_velocity = 2.0
             self.right_velocity = 2.0
         else:
-            print("Retrying search after avoidance maneuver.")
+            print("Avoided obstacle. Returning to search.")
             self.state = "search"
             self.best_box = None
             self.state_start_time = None
 
     def _handle_drive(self):
         if self.best_box is None:
-            print("No cube to drive to. Searching again.")
             self.state = "search"
             return
 
         angle = self._bounding_box_angle(self.best_box)
         dist = self._estimate_distance(self.best_box)
-        print(f"Driving toward cube. Angle: {angle:.2f}, Distance: {dist:.2f}")
 
-        if angle > 0.05:
-            self.left_velocity = 0.3
-            self.right_velocity = -0.3
-        elif angle < -0.05:
-            self.left_velocity = -0.3
-            self.right_velocity = 0.3
+        if abs(angle) > 0.05:
+            self.left_velocity = 0.3 if angle > 0 else -0.3
+            self.right_velocity = -0.3 if angle > 0 else 0.3
         elif dist > 0.4:
             self.left_velocity = 2.0
             self.right_velocity = 2.0
         else:
-            print("Arrived at cube!")
+            print("Arrived at cube. Task complete.")
             self.left_velocity = 0.0
             self.right_velocity = 0.0
             self.state = "finished"
@@ -147,7 +126,6 @@ class Robot:
             if abs((x_max - x_min) - (y_max - y_min)) < 20:
                 boxes.append((x_min, x_max, y_min, y_max))
 
-        print(f"Detected {len(boxes)} potential blue cube(s).")
         return boxes
 
     def _find_blobs(self, mask):
@@ -195,5 +173,4 @@ class Robot:
         right = self.lidar[320:640]
         left_clear = np.nanmean([d for d in left if d and d != float('inf')])
         right_clear = np.nanmean([d for d in right if d and d != float('inf')])
-        print(f"Clearance - Left: {left_clear:.2f}, Right: {right_clear:.2f}")
         return "left" if left_clear > right_clear else "right"
