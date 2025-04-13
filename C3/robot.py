@@ -11,7 +11,6 @@ def plan(self) -> None:
     min_right = min((d for d in right if d), default=1.0)
     obstacle_close = min_front < 0.3 or min_left < 0.35 or min_right < 0.35
 
-    # Leave avoidance after push-forward
     if self.avoiding_obstacle and not obstacle_close:
         if current_time - self.avoid_start_time >= self.avoid_push_time:
             print("Obstacle cleared, resuming cube tracking")
