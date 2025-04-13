@@ -32,7 +32,9 @@ class Robot:
 
         self.scanning = False
         self.scan_start_angle = None
-        self.rotation_threshold = 350  # degrees
+        self.rotation_threshold = 360
+        self.scan_best_target = None
+        self.scan_best_angle = None
 
         self.last_target_box_seen = False
         self.last_state = "search"
@@ -53,9 +55,11 @@ class Robot:
             self.target_angle = self.calculate_angle(self.target_box)
             self.target_distance = self.estimate_distance(self.target_box)
             self.last_seen_time = self.robot.get_time()
-            if self.state == "search" or self.state == "scanning":
+            if self.state in ["search", "scanning"]:
                 print("Cube found")
-            self.scanning = False  # Stop scanning if cube is found
+            if self.state == "scanning":
+                self.scan_best_target = self.target_box
+                self.scan_best_angle = math.degrees(self.robot.get_orientation()) % 360
         else:
             self.target_box = None
 
@@ -64,6 +68,8 @@ class Robot:
     def plan(self) -> None:
         current_time = self.robot.get_time()
         self.last_state = self.state
+
+        orientation = math.degrees(self.robot.get_orientation()) % 360
 
         front = self.lidar[470:490] if self.lidar else []
         left = self.lidar[400:470] if self.lidar else []
@@ -112,15 +118,23 @@ class Robot:
         elif self.state == "search" and self.last_seen_time == 0.0 and not self.scanning:
             print("Starting scan – rotating to find cube")
             self.scanning = True
-            self.scan_start_angle = math.degrees(self.robot.get_orientation()) % 360
+            self.scan_start_angle = orientation
+            self.scan_best_target = None
+            self.scan_best_angle = None
             self.state = "scanning"
 
         elif self.state == "scanning":
-            current_angle = math.degrees(self.robot.get_orientation()) % 360
-            angle_diff = (current_angle - self.scan_start_angle + 360) % 360
+            angle_diff = (orientation - self.scan_start_angle + 360) % 360
             if angle_diff >= self.rotation_threshold:
-                print("Scan complete – cube not found")
-                self.state = "done"  # Stop robot if cube wasn't found after full rotation
+                if self.scan_best_target is not None:
+                    print("Scan complete – cube found during scan")
+                    self.target_box = self.scan_best_target
+                    self.target_angle = self.calculate_angle(self.target_box)
+                    self.target_distance = self.estimate_distance(self.target_box)
+                    self.state = "adjusting"
+                else:
+                    print("Scan complete – cube not found")
+                    self.state = "done"
                 self.scanning = False
             else:
                 self.left_velocity = -0.5
