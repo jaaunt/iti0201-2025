@@ -27,6 +27,12 @@ class Robot:
         self.post_avoid_start = 0.0
         self.post_avoid_duration = 1.0
 
+        # Blind push after cube disappears
+        self.blind_push = False
+        self.blind_push_start = 0.0
+        self.blind_push_duration = 3.0
+        self.was_adjusting = False
+
     def spin(self) -> None:
         self.sense()
         self.plan()
@@ -62,6 +68,10 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.5 or min_left < 0.5 or min_right < 0.5
 
+        # Track if we were adjusting
+        if self.state == "adjusting":
+            self.was_adjusting = True
+
         # End avoidance
         if self.avoiding_obstacle and current_time - self.avoid_start_time >= self.avoid_duration:
             print("Avoidance time ended, continuing straight")
@@ -86,12 +96,20 @@ class Robot:
             else:
                 self.post_avoid_forward = False
 
+        elif self.blind_push:
+            if current_time - self.blind_push_start < self.blind_push_duration:
+                self.state = "blind_push"
+            else:
+                print("Blind push complete")
+                self.blind_push = False
+                self.state = "arrived"
+
         elif self.target_box:
             if abs(self.target_angle) > 0.1:
                 if self.state != "adjusting":
                     print("Adjusting to face cube")
                 self.state = "adjusting"
-            elif self.target_distance > 0.15 and min_front > 0.25:
+            elif self.target_distance > 0.15:
                 if self.state != "driving":
                     print("Driving toward cube")
                 self.state = "driving"
@@ -99,6 +117,13 @@ class Robot:
                 if self.state != "arrived":
                     print("Arrived at cube")
                 self.state = "arrived"
+
+        elif self.target_box is None and self.was_adjusting and not self.blind_push:
+            print("Cube lost after adjustment. Starting blind push")
+            self.blind_push = True
+            self.blind_push_start = current_time
+            self.was_adjusting = False
+            self.state = "blind_push"
 
         elif current_time - self.last_seen_time > 10:
             if self.state != "search":
@@ -124,6 +149,10 @@ class Robot:
                 self.right_velocity = 1.0
 
         elif self.state == "post_forward":
+            self.left_velocity = 1.2
+            self.right_velocity = 1.2
+
+        elif self.state == "blind_push":
             self.left_velocity = 1.2
             self.right_velocity = 1.2
 
