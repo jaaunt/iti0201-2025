@@ -65,11 +65,27 @@ class Robot:
             self.right_velocity = -self.left_velocity
 
         elif self.state == "driving":
-            front_lidar = self.lidar[470:490] if self.lidar else []
-            if any(d < 0.3 for d in front_lidar if d):
-                print("Obstacle detected, stopping")
+            # Wider LIDAR scan for better obstacle detection
+            left = self.lidar[400:470]
+            right = self.lidar[490:560]
+            front = self.lidar[470:490]
+
+            min_left = min((d for d in left if d), default=1.0)
+            min_right = min((d for d in right if d), default=1.0)
+            min_front = min((d for d in front if d), default=1.0)
+
+            if min_front < 0.3:
+                print("Obstacle ahead. Stopping.")
                 self.left_velocity = 0
                 self.right_velocity = 0
+            elif min_left < 0.35:
+                print("Obstacle on left. Steering right.")
+                self.left_velocity = 1.2
+                self.right_velocity = 0.5
+            elif min_right < 0.35:
+                print("Obstacle on right. Steering left.")
+                self.left_velocity = 0.5
+                self.right_velocity = 1.2
             else:
                 self.left_velocity = 1.5
                 self.right_velocity = 1.5
