@@ -121,18 +121,22 @@ class Robot:
         return ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
 
     def _wide_object_ahead(self, threshold=0.5):
-        """Check 180° front lidar span for close objects."""
+        """Check front LIDAR for objects within a certain distance."""
         if not self.lidar:
             return False
 
         center = len(self.lidar) // 2
-        span = len(self.lidar) // 4  # 180° front coverage
+        span = len(self.lidar) // 6  # 120° instead of 180°
         front = self.lidar[center - span:center + span + 1]
 
-        for d in front:
-            if d is not None and d != float("inf") and d < threshold:
-                return True
-        return False
+        valid = [d for d in front if d and d != float("inf") and d > 0]
+        if not valid:
+            return False
+
+        min_dist = min(valid)
+        print(f"[DEBUG] Closest front object: {min_dist:.2f} m")
+
+        return min_dist < threshold
 
     def _find_blobs(self, mask):
         height, width = mask.shape
