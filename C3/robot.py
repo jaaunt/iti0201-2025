@@ -13,6 +13,7 @@ class Robot:
         self.target_box = None
         self.left_velocity = 0
         self.right_velocity = 0
+        self.state = "normal"
         self.forward_ticks_remaining = 0
         self.turning = False
 
@@ -23,52 +24,55 @@ class Robot:
         self.target_box = self._find_blue_cube()
 
     def plan(self) -> None:
-        # === Detour state: Forward after turning ===
-        if self.forward_ticks_remaining > 0:
-            print(f"[DETOUR] Forward... {self.forward_ticks_remaining} ticks left")
-            self.left_velocity = 2.0
-            self.right_velocity = 2.0
-            self.forward_ticks_remaining -= 1
-            return
-
-        # === Detour state: Right turn ===
+        # === HANDLE TURN + FORWARD AFTER AVOIDANCE ===
         if self.turning:
-            print("[DETOUR] Turning right")
+            print("[AVOID] Turning RIGHT 90°")
             self.left_velocity = 2.0
             self.right_velocity = -2.0
             self.turning = False
-            self.forward_ticks_remaining = 20
+            self.forward_ticks_remaining = 20  # ≈ 2s at 10Hz
             return
 
-        # === Obstacle Detected Broadly Ahead ===
-        if self._wide_object_ahead(threshold=0.4):
+        if self.forward_ticks_remaining > 0:
+            print(f"[AVOID] Driving forward... ticks left: {self.forward_ticks_remaining}")
+            self.left_velocity = 2.5
+            self.right_velocity = 2.5
+            self.forward_ticks_remaining -= 1
+            return
+
+        # === CONSTANT OBSTACLE DETECTION (WIDE SCAN) ===
+        if self._wide_object_ahead(threshold=0.5):
+            print("[OBSTACLE] Object very close ahead!")
+
             if self.target_box is not None:
-                print("[BLOCKED] Obstacle + cube visible => wrong object, detouring")
+                print("[OBSTACLE] Blue cube still visible => this is NOT the cube, must avoid")
+                self.left_velocity = 0
+                self.right_velocity = 0
                 self.turning = True
                 return
+            else:
+                print("[STOP] Possibly at cube or obstacle – stopping")
+                self.left_velocity = 0
+                self.right_velocity = 0
+                return
 
-        # === No cube detected – spin to search ===
+        # === SEARCH MODE ===
         if self.target_box is None:
-            print("[SEARCH] No cube – spinning")
+            print("[SEARCH] Cube not found – rotating in place")
             self.left_velocity = -2.0
             self.right_velocity = 2.0
             return
 
-        # === Cube is visible: aim and go ===
+        # === ALIGN TO CUBE ===
         angle = self._get_cube_angle(self.target_box)
-        distance = self._estimate_distance(self.target_box)
-        print(f"[CUBE] Detected at angle {angle:.2f} rad, distance ~{distance:.2f} m")
+        print(f"[CUBE] Detected at angle {angle:.2f} rad")
 
-        if distance < 0.35:
-            print("[CUBE] Close – stopping")
-            self.left_velocity = 0
-            self.right_velocity = 0
-        elif abs(angle) > 0.2:
-            print("[ADJUST] Aligning to cube")
+        if abs(angle) > 0.2:
+            print("[ALIGN] Adjusting to face cube")
             self.left_velocity = 1.5 if angle > 0 else -1.5
             self.right_velocity = -1.5 if angle > 0 else 1.5
         else:
-            print("[FORWARD] Driving straight to cube")
+            print("[FORWARD] Aligned – driving toward cube using LIDAR to stop")
             self.left_velocity = 2.5
             self.right_velocity = 2.5
 
@@ -116,18 +120,13 @@ class Robot:
         x_center = (x_min + x_max) / 2
         return ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
 
-    def _estimate_distance(self, box):
-        _, _, y_min, y_max = box
-        pixel_height = y_max - y_min
-        return 100.0 / pixel_height if pixel_height > 0 else float("inf")
-
-    def _wide_object_ahead(self, threshold=0.4):
-        """Check a wider lidar window to catch side obstacles."""
+    def _wide_object_ahead(self, threshold=0.5):
+        """Check 180° front lidar span for close objects."""
         if not self.lidar:
             return False
 
         center = len(self.lidar) // 2
-        span = 80  # wide window
+        span = len(self.lidar) // 4  # 180° front coverage
         front = self.lidar[center - span:center + span + 1]
 
         for d in front:
