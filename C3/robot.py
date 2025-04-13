@@ -13,7 +13,6 @@ class Robot:
         self.target_box = None
         self.left_velocity = 0
         self.right_velocity = 0
-        self.state = "searching"
 
     def sense(self) -> None:
         self.image = self.robot.get_camera_rgb_image()
@@ -23,11 +22,13 @@ class Robot:
 
     def plan(self) -> None:
         if self._obstacle_ahead():
+            print("Obstacle detected – turning to avoid")
             self.left_velocity = -1.5
             self.right_velocity = 1.5
             return
 
         if self.target_box is None:
+            print("No cube detected – rotating to search")
             self.left_velocity = -2.0
             self.right_velocity = 2.0
             return
@@ -35,15 +36,22 @@ class Robot:
         angle = self._get_cube_angle(self.target_box)
         distance = self._estimate_distance(self.target_box)
 
-        if distance < 0.3:
+        print(f"Cube angle: {angle:.2f} rad, estimated distance: {distance:.2f} m")
+
+        if distance < 0.35:
+            print("Cube reached – stopping.")
             self.left_velocity = 0
             self.right_velocity = 0
-        elif abs(angle) > 0.2:
+            return
+
+        if abs(angle) > 0.2:
             turn_speed = 1.5
+            print("Turning to align with cube")
             self.left_velocity = turn_speed if angle > 0 else -turn_speed
             self.right_velocity = -turn_speed if angle > 0 else turn_speed
         else:
             forward_speed = 2.5
+            print("Driving straight to cube")
             self.left_velocity = forward_speed
             self.right_velocity = forward_speed
 
@@ -101,8 +109,8 @@ class Robot:
             return False
 
         center = len(self.lidar) // 2
-        span = 25  # laiem aken
-        front_values = self.lidar[center - span: center + span + 1]
+        span = 25
+        front_values = self.lidar[center - span : center + span + 1]
         valid = [d for d in front_values if d is not None and d != float("inf")]
         return any(d < 0.4 for d in valid)
 
