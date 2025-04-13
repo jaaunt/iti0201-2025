@@ -17,27 +17,23 @@ class Robot:
         self.left_velocity = 0
         self.right_velocity = 0
 
-        # Avoidance logic
         self.avoiding_obstacle = False
         self.avoid_start_time = 0.0
         self.avoid_duration = 1.2
 
-        # Post-avoid
         self.post_avoid_forward = False
         self.post_avoid_start = 0.0
         self.post_avoid_duration = 1.0
 
-        # Blind push
         self.blind_push = False
         self.blind_push_start = 0.0
         self.blind_push_duration = 4.0
         self.was_adjusting = False
 
-        # Scanning
         self.scanning = False
         self.scan_start_angle = None
+        self.rotation_threshold = 350  # degrees
 
-        # Memory
         self.last_target_box_seen = False
         self.last_state = "search"
 
@@ -57,8 +53,9 @@ class Robot:
             self.target_angle = self.calculate_angle(self.target_box)
             self.target_distance = self.estimate_distance(self.target_box)
             self.last_seen_time = self.robot.get_time()
-            if self.state == "search":
+            if self.state == "search" or self.state == "scanning":
                 print("Cube found")
+            self.scanning = False  # Stop scanning if cube is found
         else:
             self.target_box = None
 
@@ -68,7 +65,6 @@ class Robot:
         current_time = self.robot.get_time()
         self.last_state = self.state
 
-        # LIDAR
         front = self.lidar[470:490] if self.lidar else []
         left = self.lidar[400:470] if self.lidar else []
         right = self.lidar[490:560] if self.lidar else []
@@ -77,14 +73,12 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.5 or min_left < 0.5 or min_right < 0.5
 
-        # Avoid end
         if self.avoiding_obstacle and current_time - self.avoid_start_time >= self.avoid_duration:
             print("Avoidance time ended, continuing straight")
             self.avoiding_obstacle = False
             self.post_avoid_forward = True
             self.post_avoid_start = current_time
 
-        # Avoid start
         if obstacle_close and not self.avoiding_obstacle:
             print("Obstacle detected, entering avoidance mode")
             self.avoiding_obstacle = True
@@ -122,14 +116,16 @@ class Robot:
             self.state = "scanning"
 
         elif self.state == "scanning":
-            self.left_velocity = -0.5
-            self.right_velocity = 0.5
             current_angle = math.degrees(self.robot.get_orientation()) % 360
             angle_diff = (current_angle - self.scan_start_angle + 360) % 360
-            if angle_diff >= 350:
+            if angle_diff >= self.rotation_threshold:
                 print("Scan complete – cube not found")
-                self.state = "search"
+                self.state = "done"  # Stop robot if cube wasn't found after full rotation
                 self.scanning = False
+            else:
+                self.left_velocity = -0.5
+                self.right_velocity = 0.5
+                return
 
         elif self.target_box:
             if abs(self.target_angle) > 0.1:
@@ -152,7 +148,6 @@ class Robot:
             print("Searching for cube")
             self.state = "search"
 
-        # --- Movement ---
         if self.state == "adjusting":
             self.left_velocity = 0.3 if self.target_angle > 0 else -0.3
             self.right_velocity = -self.left_velocity
