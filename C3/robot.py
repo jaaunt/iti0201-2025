@@ -37,6 +37,11 @@ class Robot:
         self.last_target_box_seen = False
         self.last_state = "search"
 
+        # 360 scan state
+        self.scanning = False
+        self.scan_start_angle = None
+        self.rotation_threshold = math.radians(350)
+
     def spin(self) -> None:
         self.sense()
         self.plan()
@@ -58,7 +63,6 @@ class Robot:
         else:
             self.target_box = None
 
-        # track whether target was visible in previous cycle
         self.last_target_box_seen = self.target_box is not None
 
     def plan(self) -> None:
@@ -67,11 +71,11 @@ class Robot:
         if self.state == "done":
             self.left_velocity = 0.0
             self.right_velocity = 0.0
-            return  # STOP! Don't do anything else
+            return
 
         self.last_state = self.state
 
-        # LIDAR scan regions
+        # LIDAR scan
         front = self.lidar[470:490] if self.lidar else []
         left = self.lidar[400:470] if self.lidar else []
         right = self.lidar[490:560] if self.lidar else []
@@ -83,6 +87,31 @@ class Robot:
 
         if self.state == "adjusting":
             self.was_adjusting = True
+
+        # === 360° scan logic ===
+        if not self.target_box and not self.scanning:
+            print("Starting scan – rotating to find cube")
+            self.scanning = True
+            self.scan_start_angle = self.robot.get_orientation()
+            self.state = "scanning"
+
+        elif self.scanning:
+            current_angle = self.robot.get_orientation()
+            delta = (current_angle - self.scan_start_angle + 2 * math.pi) % (2 * math.pi)
+
+            if self.target_box:
+                print("Cube found during scan")
+                self.scanning = False
+                self.state = "adjusting"
+            elif delta > self.rotation_threshold:
+                print("Scan complete – cube not found")
+                self.scanning = False
+                self.state = "search"
+            else:
+                self.state = "scanning"
+            # Return early to avoid triggering other states
+            self.set_scan_velocity()
+            return
 
         if self.avoiding_obstacle and current_time - self.avoid_start_time >= self.avoid_duration:
             print("Avoidance time ended, continuing straight")
@@ -140,7 +169,7 @@ class Robot:
                 print("Searching for cube")
             self.state = "search"
 
-        # --- Movement control ---
+        # Movement control
         if self.state == "adjusting":
             self.left_velocity = 0.3 if self.target_angle > 0 else -0.3
             self.right_velocity = -self.left_velocity
@@ -164,8 +193,8 @@ class Robot:
 
         elif self.state == "blind_push":
             print("Blind push: driving forward")
-            self.left_velocity = 3
-            self.right_velocity = 3
+            self.left_velocity = 1.2
+            self.right_velocity = 1.2
 
         elif self.state == "search":
             self.left_velocity = -0.5
@@ -175,31 +204,30 @@ class Robot:
             self.left_velocity = 0.0
             self.right_velocity = 0.0
 
+    def set_scan_velocity(self):
+        self.left_velocity = -0.3
+        self.right_velocity = 0.3
+
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
-
         if self.state == "done":
             print("Act: Robot stopped permanently.")
 
     def get_cube_objects(self) -> list | None:
         if self.image is None:
             return None
-
         try:
             blue_channel = self.image[:, :, 0]
             green_channel = self.image[:, :, 1]
             red_channel = self.image[:, :, 2]
         except IndexError:
             return None
-
         threshold = 50
         mask = (blue_channel > green_channel + threshold) & (blue_channel > red_channel + threshold)
-
         labeled_mask, count = self.find_blobs(mask)
         if count == 0:
             return None
-
         boxes = []
         for i in range(1, count + 1):
             pixels = np.column_stack(np.where(labeled_mask == i))
@@ -207,12 +235,10 @@ class Robot:
                 continue
             y_min, x_min = pixels.min(axis=0)
             y_max, x_max = pixels.max(axis=0)
-
             x_len = x_max - x_min
             y_len = y_max - y_min
             if abs(x_len - y_len) <= 20:
                 boxes.append((x_min, x_max, y_min, y_max))
-
         return boxes if boxes else None
 
     def find_blobs(self, mask):
@@ -221,7 +247,6 @@ class Robot:
         label_id = 1
         to_visit = []
         neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-
         for y, x in np.argwhere(mask):
             if labeled[y, x] == 0:
                 labeled[y, x] = label_id
@@ -235,7 +260,6 @@ class Robot:
                                 labeled[ny, nx] = label_id
                                 to_visit.append((ny, nx))
                 label_id += 1
-
         return labeled, label_id - 1
 
     def calculate_angle(self, box):
