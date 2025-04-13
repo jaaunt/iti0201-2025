@@ -343,8 +343,8 @@ class Robot:
         interacting with the environment.
         """
         # print("There is movement", self.linear_velocity, self.right_motor_torque, self.left_motor_torque)
-        self.robot.set_left_motor_velocity(self.right_motor)
-        self.robot.set_right_motor_velocity(self.left_motor)
+        self.robot.set_left_motor_velocity(self.left_motor)
+        self.robot.set_right_motor_velocity(self.right_motor)
 
     def spin(self) -> None:
         """Spin the robot.
