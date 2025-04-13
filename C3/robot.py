@@ -153,6 +153,7 @@ class Robot:
             self.right_velocity = 1.2
 
         elif self.state == "blind_push":
+            print("Blind push: driving forward")
             self.left_velocity = 1.2
             self.right_velocity = 1.2
 
