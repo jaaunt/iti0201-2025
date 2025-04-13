@@ -22,10 +22,15 @@ class Robot:
         self.avoid_start_time = 0.0
         self.avoid_duration = 1.2
 
-        # After avoidance forward motion
+        # Post-avoid straight motion
         self.post_avoid_forward = False
         self.post_avoid_start = 0.0
         self.post_avoid_duration = 1.0
+
+        # Final push logic
+        self.final_push = False
+        self.final_push_start = 0.0
+        self.final_push_duration = 3.0
 
     def spin(self) -> None:
         self.sense()
@@ -69,7 +74,7 @@ class Robot:
             self.post_avoid_forward = True
             self.post_avoid_start = current_time
 
-        # Enter avoidance
+        # Start avoidance
         if obstacle_close and not self.avoiding_obstacle:
             print("Obstacle detected, entering avoidance mode")
             self.avoiding_obstacle = True
@@ -86,6 +91,14 @@ class Robot:
             else:
                 self.post_avoid_forward = False
 
+        elif self.final_push:
+            if current_time - self.final_push_start < self.final_push_duration:
+                self.state = "final_push"
+            else:
+                print("Final push complete")
+                self.final_push = False
+                self.state = "arrived"
+
         elif self.target_box:
             if abs(self.target_angle) > 0.1:
                 if self.state != "adjusting":
@@ -96,9 +109,11 @@ class Robot:
                     print("Driving toward cube")
                 self.state = "driving"
             else:
-                if self.state != "arrived":
-                    print("Arrived at cube")
-                self.state = "arrived"
+                if not self.final_push:
+                    print("Initiating final push")
+                    self.final_push = True
+                    self.final_push_start = current_time
+                    self.state = "final_push"
 
         elif current_time - self.last_seen_time > 10:
             if self.state != "search":
@@ -124,6 +139,10 @@ class Robot:
                 self.right_velocity = 1.0
 
         elif self.state == "post_forward":
+            self.left_velocity = 1.2
+            self.right_velocity = 1.2
+
+        elif self.state == "final_push":
             self.left_velocity = 1.2
             self.right_velocity = 1.2
 
