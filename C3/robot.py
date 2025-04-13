@@ -99,9 +99,11 @@ class Robot:
     def _obstacle_ahead(self):
         if not self.lidar:
             return False
+
         center = len(self.lidar) // 2
-        window = self.lidar[center - 10:center + 10]
-        valid = [d for d in window if d and d != float("inf")]
+        span = 25  # laiem aken
+        front_values = self.lidar[center - span: center + span + 1]
+        valid = [d for d in front_values if d is not None and d != float("inf")]
         return any(d < 0.4 for d in valid)
 
     def _find_blobs(self, mask):
