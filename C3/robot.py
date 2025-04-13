@@ -91,7 +91,7 @@ class Robot:
                 if self.state != "adjusting":
                     print("Adjusting to face cube")
                 self.state = "adjusting"
-            elif self.target_distance > 0.15 or min_front > 0.25:
+            elif self.target_distance > 0.15 and min_front > 0.25:
                 if self.state != "driving":
                     print("Driving toward cube")
                 self.state = "driving"
