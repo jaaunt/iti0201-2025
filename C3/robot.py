@@ -13,6 +13,8 @@ class Robot:
         self.target_box = None
         self.left_velocity = 0
         self.right_velocity = 0
+        self.state = "searching"
+        self.avoid_timer = 0
 
     def sense(self) -> None:
         self.image = self.robot.get_camera_rgb_image()
@@ -21,38 +23,49 @@ class Robot:
         self.target_box = self._find_blue_cube()
 
     def plan(self) -> None:
-        if self.target_box is None:
+        if self.state == "avoiding":
+            self._handle_avoiding()
+        elif self.target_box is None:
             print("No cube detected – rotating to search")
             self.left_velocity = -2.0
             self.right_velocity = 2.0
-            return
-
-        angle = self._get_cube_angle(self.target_box)
-        distance = self._estimate_distance(self.target_box)
-
-        print(f"Cube angle: {angle:.2f} rad, estimated distance: {distance:.2f} m")
-
-        if distance < 0.35:
-            print("Cube reached – stopping.")
-            self.left_velocity = 0
-            self.right_velocity = 0
-            return
-
-        if abs(angle) > 0.2:
-            turn_speed = 1.5
-            print("Turning to align with cube")
-            self.left_velocity = turn_speed if angle > 0 else -turn_speed
-            self.right_velocity = -turn_speed if angle > 0 else turn_speed
+            self.state = "searching"
         else:
-            if not self._is_path_clear_to_cube(angle):
-                print("Obstacle in path to cube – stopping")
+            angle = self._get_cube_angle(self.target_box)
+            distance = self._estimate_distance(self.target_box)
+            print(f"Cube angle: {angle:.2f} rad, estimated distance: {distance:.2f} m")
+
+            if self._obstacle_in_front_sector():
+                print("Obstacle detected – switching to avoidance mode")
+                self.state = "avoiding"
+                self.avoid_timer = 15
+                self.left_velocity = -1.5
+                self.right_velocity = 1.5
+            elif distance < 0.35:
+                print("Cube reached – stopping.")
                 self.left_velocity = 0
                 self.right_velocity = 0
+            elif abs(angle) > 0.2:
+                turn_speed = 1.5
+                print("Turning to align with cube")
+                self.left_velocity = turn_speed if angle > 0 else -turn_speed
+                self.right_velocity = -turn_speed if angle > 0 else turn_speed
+                self.state = "approaching"
             else:
                 forward_speed = 2.5
                 print("Path is clear – driving toward cube")
                 self.left_velocity = forward_speed
                 self.right_velocity = forward_speed
+                self.state = "approaching"
+
+    def _handle_avoiding(self):
+        print(f"Avoiding... timer: {self.avoid_timer}")
+        self.left_velocity = -2.0
+        self.right_velocity = 2.0
+        self.avoid_timer -= 1
+        if self.avoid_timer <= 0:
+            print("Avoidance done – returning to search")
+            self.state = "searching"
 
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
@@ -87,7 +100,7 @@ class Robot:
             width = x_max - x_min
             height = y_max - y_min
 
-            max_size = 150  # välista suured objektid nagu postid
+            max_size = 150
             if abs(width - height) < 20 and height < max_size:
                 return (x_min, x_max, y_min, y_max)
 
@@ -105,27 +118,25 @@ class Robot:
         pixel_height = y_max - y_min
         return 100.0 / pixel_height if pixel_height > 0 else float("inf")
 
-    def _is_path_clear_to_cube(self, angle):
-        if not self.lidar or self.fov is None:
-            return True
+    def _obstacle_in_front_sector(self, sector_degrees=120, distance_threshold=0.5):
+        if not self.lidar:
+            return False
 
         width = len(self.lidar)
         lidar_fov = np.pi
-        lidar_angle_per_index = lidar_fov / width
-        center_index = width // 2
-        angle_index = int(angle / lidar_angle_per_index)
-        index = center_index + angle_index
+        sector_rad = np.deg2rad(sector_degrees)
+        indices_to_check = int((sector_rad / lidar_fov) * width)
+        center = width // 2
+        start = max(0, center - indices_to_check // 2)
+        end = min(width, center + indices_to_check // 2 + 1)
 
-        check_range = 10
-        indices_to_check = range(max(0, index - check_range), min(width, index + check_range + 1))
+        for i in range(start, end):
+            d = self.lidar[i]
+            if d is not None and d != float("inf") and d < distance_threshold:
+                print(f"[WARNING] Obstacle in front sector! LIDAR[{i}] = {d:.2f}")
+                return True
 
-        for i in indices_to_check:
-            value = self.lidar[i]
-            if value is not None and value < 0.5:
-                print(f"[WARNING] Obstacle detected at LIDAR[{i}] = {value:.2f}")
-                return False
-
-        return True
+        return False
 
     def _find_blobs(self, mask):
         height, width = mask.shape
