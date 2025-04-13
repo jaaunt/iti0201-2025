@@ -30,8 +30,12 @@ class Robot:
         # Blind push logic
         self.blind_push = False
         self.blind_push_start = 0.0
-        self.blind_push_duration = 3.0
+        self.blind_push_duration = 5.0  # <-- siit muuda kui tahad pikemaks
         self.was_adjusting = False
+
+        # Blind push trigger state
+        self.last_target_box_seen = False
+        self.last_state = "search"
 
     def spin(self) -> None:
         self.sense()
@@ -49,14 +53,17 @@ class Robot:
             self.target_angle = self.calculate_angle(self.target_box)
             self.target_distance = self.estimate_distance(self.target_box)
             self.last_seen_time = self.robot.get_time()
-
             if self.state == "search":
                 print("Cube found")
         else:
             self.target_box = None
 
+        # track whether target was visible in previous cycle
+        self.last_target_box_seen = self.target_box is not None
+
     def plan(self) -> None:
         current_time = self.robot.get_time()
+        self.last_state = self.state  # track previous state
 
         # LIDAR scan regions
         front = self.lidar[470:490] if self.lidar else []
@@ -68,18 +75,15 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.5 or min_left < 0.5 or min_right < 0.5
 
-        # Track if we were adjusting
         if self.state == "adjusting":
             self.was_adjusting = True
 
-        # End avoidance
         if self.avoiding_obstacle and current_time - self.avoid_start_time >= self.avoid_duration:
             print("Avoidance time ended, continuing straight")
             self.avoiding_obstacle = False
             self.post_avoid_forward = True
             self.post_avoid_start = current_time
 
-        # Start avoidance
         if obstacle_close and not self.avoiding_obstacle:
             print("Obstacle detected, entering avoidance mode")
             self.avoiding_obstacle = True
@@ -100,9 +104,9 @@ class Robot:
             if current_time - self.blind_push_start < self.blind_push_duration:
                 self.state = "blind_push"
             else:
-                print("Blind push complete")
+                print("Blind push complete – stopping permanently")
                 self.blind_push = False
-                self.state = "arrived"
+                self.state = "done"
 
         elif self.target_box:
             if abs(self.target_angle) > 0.1:
@@ -118,7 +122,7 @@ class Robot:
                     print("Arrived at cube")
                 self.state = "arrived"
 
-        elif self.target_box is None and not self.blind_push and self.state in ["adjusting", "driving"]:
+        elif not self.last_target_box_seen and not self.blind_push and self.last_state in ["adjusting", "driving"]:
             print("Cube lost after tracking. Starting blind push")
             self.blind_push = True
             self.blind_push_start = current_time
@@ -165,11 +169,15 @@ class Robot:
             self.left_velocity = 0
             self.right_velocity = 0
 
+        elif self.state == "done":
+            print("Robot is done – not moving anymore")
+            self.left_velocity = 0
+            self.right_velocity = 0
+
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
 
-    # --- Cube detection ---
     def get_cube_objects(self) -> list | None:
         if self.image is None:
             return None
