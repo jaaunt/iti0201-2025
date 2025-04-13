@@ -30,7 +30,7 @@ class Robot:
         # Blind push logic
         self.blind_push = False
         self.blind_push_start = 0.0
-        self.blind_push_duration = 5.0  # <-- siit muuda kui tahad pikemaks
+        self.blind_push_duration = 5.0
         self.was_adjusting = False
 
         # Blind push trigger state
@@ -63,7 +63,13 @@ class Robot:
 
     def plan(self) -> None:
         current_time = self.robot.get_time()
-        self.last_state = self.state  # track previous state
+
+        if self.state == "done":
+            self.left_velocity = 0.0
+            self.right_velocity = 0.0
+            return  # STOP! Don't do anything else
+
+        self.last_state = self.state
 
         # LIDAR scan regions
         front = self.lidar[470:490] if self.lidar else []
@@ -166,15 +172,15 @@ class Robot:
             self.right_velocity = 0.5
 
         elif self.state == "arrived":
-            self.left_velocity = 0
-            self.right_velocity = 0
-
-        if self.state == "done":
-            return
+            self.left_velocity = 0.0
+            self.right_velocity = 0.0
 
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
+
+        if self.state == "done":
+            print("Act: Robot stopped permanently.")
 
     def get_cube_objects(self) -> list | None:
         if self.image is None:
