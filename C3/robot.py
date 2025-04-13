@@ -169,10 +169,8 @@ class Robot:
             self.left_velocity = 0
             self.right_velocity = 0
 
-        elif self.state == "done":
-            print("Robot is done – not moving anymore")
-            self.left_velocity = 0
-            self.right_velocity = 0
+        if self.state == "done":
+            return
 
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
