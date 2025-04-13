@@ -43,7 +43,7 @@ class Robot:
             case self.STATE_START:
                 self.left_motor_speed = 1
                 self.right_motor_speed = 1
-                if self.current_time > 3.5:
+                if self.current_time > 2.5:
                     self.state = self.STATE_SEARCH
 
             case self.STATE_SEARCH:
