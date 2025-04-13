@@ -32,7 +32,7 @@ class Robot:
 
         self.scanning = False
         self.scan_start_angle = None
-        self.rotation_threshold = 350  # decreased from 360 to allow full turn detection
+        self.rotation_threshold = 350
         self.scan_best_target = None
         self.scan_best_angle = None
         self.scan_orientation_target = None
