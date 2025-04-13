@@ -112,7 +112,8 @@ class Robot:
         return labeled_mask, label_id - 1
 
     def _estimate_cube_distance(self):
-        if not self.image or not self.blue_object_angles:
+        """Estimate distance to the blue cube based on bounding box height in the camera image."""
+        if self.image is None or not self.blue_object_angles:
             return None
 
         blue_channel = self.image[:, :, 0]
