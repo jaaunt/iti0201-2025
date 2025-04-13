@@ -21,12 +21,6 @@ class Robot:
         self.target_box = self._find_blue_cube()
 
     def plan(self) -> None:
-        if self._obstacle_ahead():
-            print("Obstacle detected – turning to avoid")
-            self.left_velocity = -1.5
-            self.right_velocity = 1.5
-            return
-
         if self.target_box is None:
             print("No cube detected – rotating to search")
             self.left_velocity = -2.0
@@ -50,10 +44,15 @@ class Robot:
             self.left_velocity = turn_speed if angle > 0 else -turn_speed
             self.right_velocity = -turn_speed if angle > 0 else turn_speed
         else:
-            forward_speed = 2.5
-            print("Driving straight to cube")
-            self.left_velocity = forward_speed
-            self.right_velocity = forward_speed
+            if not self._is_path_clear_to_cube(angle):
+                print("Obstacle in path to cube – stopping")
+                self.left_velocity = 0
+                self.right_velocity = 0
+            else:
+                forward_speed = 2.5
+                print("Path is clear – driving toward cube")
+                self.left_velocity = forward_speed
+                self.right_velocity = forward_speed
 
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
@@ -87,7 +86,9 @@ class Robot:
             y_max, x_max = pixels.max(axis=0)
             width = x_max - x_min
             height = y_max - y_min
-            if abs(width - height) < 20:
+
+            max_size = 150  # välista suured objektid nagu postid
+            if abs(width - height) < 20 and height < max_size:
                 return (x_min, x_max, y_min, y_max)
 
         return None
@@ -104,15 +105,23 @@ class Robot:
         pixel_height = y_max - y_min
         return 100.0 / pixel_height if pixel_height > 0 else float("inf")
 
-    def _obstacle_ahead(self):
-        if not self.lidar:
-            return False
+    def _is_path_clear_to_cube(self, angle):
+        if not self.lidar or self.fov is None:
+            return True
 
-        center = len(self.lidar) // 2
-        span = 40
-        front_values = self.lidar[center - span : center + span + 1]
-        valid = [d for d in front_values if d is not None and d != float("inf")]
-        return any(d < 0.4 for d in valid)
+        width = len(self.lidar)
+        lidar_fov = np.pi  # eeldame 180 kraadi LIDAR vaadet
+        lidar_angle_per_pixel = lidar_fov / width
+
+        lidar_index = width // 2 + int(angle / lidar_angle_per_pixel)
+
+        if 0 <= lidar_index < width:
+            value = self.lidar[lidar_index]
+            if value is not None and value < 0.5:
+                print(f"[WARNING] Obstacle detected at cube angle! LIDAR[{lidar_index}] = {value:.2f}")
+                return False
+
+        return True
 
     def _find_blobs(self, mask):
         height, width = mask.shape
