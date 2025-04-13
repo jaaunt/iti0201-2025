@@ -60,7 +60,7 @@ class Robot:
             case self.STATE_START:
                 self.left_motor_speed = 1
                 self.right_motor_speed = 1
-                if self.current_time > 2.5:
+                if self.current_time > 3.5:
                     self.state = self.STATE_SEARCH
 
             case self.STATE_SEARCH:
@@ -83,8 +83,8 @@ class Robot:
                 self._drive_to_target()
 
             case self.STATE_FINAL_APPROACH:
-                self.left_motor_speed = 1
-                self.right_motor_speed = 1
+                self.left_motor_speed = 2
+                self.right_motor_speed = 2
                 if self.current_time - self.final_approach_start_time > 5.0:
                     self.state = self.STATE_STOP
                     print("Robot on nüüd täielikult peatunud.")
