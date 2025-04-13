@@ -25,46 +25,66 @@ class Robot:
     def plan(self) -> None:
         if self.state == "avoiding":
             self._handle_avoiding()
-        elif self.target_box is None:
+            return
+
+        if self.target_box is None:
             print("No cube detected – rotating to search")
             self.left_velocity = -2.0
             self.right_velocity = 2.0
             self.state = "searching"
-        else:
-            angle = self._get_cube_angle(self.target_box)
-            distance = self._estimate_distance(self.target_box)
-            print(f"Cube angle: {angle:.2f} rad, estimated distance: {distance:.2f} m")
+            return
 
-            if self._obstacle_in_front_sector():
-                print("Obstacle detected – switching to avoidance mode")
-                self.state = "avoiding"
-                self.avoid_timer = 15
-                self.left_velocity = -1.5
-                self.right_velocity = 1.5
-            elif distance < 0.35:
-                print("Cube reached – stopping.")
-                self.left_velocity = 0
-                self.right_velocity = 0
-            elif abs(angle) > 0.2:
-                turn_speed = 1.5
-                print("Turning to align with cube")
-                self.left_velocity = turn_speed if angle > 0 else -turn_speed
-                self.right_velocity = -turn_speed if angle > 0 else turn_speed
-                self.state = "approaching"
-            else:
-                forward_speed = 2.5
-                print("Path is clear – driving toward cube")
-                self.left_velocity = forward_speed
-                self.right_velocity = forward_speed
-                self.state = "approaching"
+        angle = self._get_cube_angle(self.target_box)
+        distance = self._estimate_distance(self.target_box)
+        print(f"Cube angle: {angle:.2f} rad, estimated distance: {distance:.2f} m")
+
+        if self._obstacle_close_and_left_or_right():
+            print("Obstacle close ahead – entering avoidance mode")
+            self.state = "avoiding"
+            self.avoid_timer = 15
+            return
+
+        if distance < 0.35:
+            print("Cube reached – stopping.")
+            self.left_velocity = 0
+            self.right_velocity = 0
+            return
+
+        if abs(angle) > 0.2:
+            print("Turning to align with cube")
+            turn_speed = 1.5
+            self.left_velocity = turn_speed if angle > 0 else -turn_speed
+            self.right_velocity = -turn_speed if angle > 0 else turn_speed
+            self.state = "approaching"
+        else:
+            print("Driving straight to cube")
+            forward_speed = 2.5
+            self.left_velocity = forward_speed
+            self.right_velocity = forward_speed
+            self.state = "approaching"
 
     def _handle_avoiding(self):
-        print(f"Avoiding... timer: {self.avoid_timer}")
-        self.left_velocity = -2.0
-        self.right_velocity = 2.0
+        print(f"Avoiding... {self.avoid_timer} ticks left")
+
+        left = self._sector_obstacle(-45, -10)
+        right = self._sector_obstacle(10, 45)
+
+        if left and not right:
+            print("Obstacle on left – turning right")
+            self.left_velocity = 2.0
+            self.right_velocity = -1.0
+        elif right and not left:
+            print("Obstacle on right – turning left")
+            self.left_velocity = -1.0
+            self.right_velocity = 2.0
+        else:
+            print("Obstacle ahead – driving forward slightly")
+            self.left_velocity = 2.0
+            self.right_velocity = 2.0
+
         self.avoid_timer -= 1
         if self.avoid_timer <= 0:
-            print("Avoidance done – returning to search")
+            print("Avoiding complete – switching to search")
             self.state = "searching"
 
     def act(self) -> None:
@@ -118,22 +138,30 @@ class Robot:
         pixel_height = y_max - y_min
         return 100.0 / pixel_height if pixel_height > 0 else float("inf")
 
-    def _obstacle_in_front_sector(self, sector_degrees=120, distance_threshold=0.5):
+    def _obstacle_close_and_left_or_right(self, threshold=0.4):
+        left = self._sector_obstacle(-45, -10, threshold)
+        right = self._sector_obstacle(10, 45, threshold)
+        return left or right
+
+    def _sector_obstacle(self, start_deg, end_deg, threshold=0.5):
         if not self.lidar:
             return False
 
-        width = len(self.lidar)
         lidar_fov = np.pi
-        sector_rad = np.deg2rad(sector_degrees)
-        indices_to_check = int((sector_rad / lidar_fov) * width)
-        center = width // 2
-        start = max(0, center - indices_to_check // 2)
-        end = min(width, center + indices_to_check // 2 + 1)
+        num_rays = len(self.lidar)
+        center = num_rays // 2
 
-        for i in range(start, end):
+        start_rad = np.deg2rad(start_deg)
+        end_rad = np.deg2rad(end_deg)
+        start_index = int(center + (start_rad / lidar_fov) * num_rays)
+        end_index = int(center + (end_rad / lidar_fov) * num_rays)
+
+        start_index = max(0, min(num_rays - 1, start_index))
+        end_index = max(0, min(num_rays - 1, end_index))
+
+        for i in range(start_index, end_index + 1):
             d = self.lidar[i]
-            if d is not None and d != float("inf") and d < distance_threshold:
-                print(f"[WARNING] Obstacle in front sector! LIDAR[{i}] = {d:.2f}")
+            if d is not None and d != float("inf") and d < threshold:
                 return True
 
         return False
