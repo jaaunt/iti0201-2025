@@ -13,7 +13,7 @@ class Robot:
         self.target_box = None
         self.left_velocity = 0
         self.right_velocity = 0
-        self.state = "searching"
+        self.state = "normal"
         self.forward_ticks_remaining = 0
         self.turning = False
 
@@ -24,35 +24,53 @@ class Robot:
         self.target_box = self._find_blue_cube()
 
     def plan(self) -> None:
+        # Handle detour forward drive after right turn
         if self.forward_ticks_remaining > 0:
-            print(f"Forward detour... ticks left: {self.forward_ticks_remaining}")
+            print(f"[DETOUR] Forward driving... {self.forward_ticks_remaining} ticks remaining")
             self.left_velocity = 2.0
             self.right_velocity = 2.0
             self.forward_ticks_remaining -= 1
             return
 
+        # Right turn before forward
         if self.turning:
-            print("Turning right 90 degrees")
+            print("[DETOUR] Turning right")
             self.left_velocity = 2.0
             self.right_velocity = -2.0
             self.turning = False
-            self.forward_ticks_remaining = 20  # Approx 2s forward
+            self.forward_ticks_remaining = 20  # about 2 seconds
             return
 
+        # If very close obstacle ahead
         if self._object_in_front(threshold=0.4):
-            print("Obstacle ahead < 0.4m – starting right turn + forward")
+            print("[ALERT] Obstacle detected at < 0.4m! Starting detour.")
             self.turning = True
             return
 
+        # If no cube is detected – spin to search
         if self.target_box is None:
-            print("No cube – spinning to search")
+            print("[SEARCH] No cube found – spinning")
             self.left_velocity = -2.0
             self.right_velocity = 2.0
             return
 
-        print("Cube found – driving forward")
-        self.left_velocity = 2.5
-        self.right_velocity = 2.5
+        # Cube detected – adjust angle and go straight
+        angle = self._get_cube_angle(self.target_box)
+        distance = self._estimate_distance(self.target_box)
+        print(f"[CUBE] Detected at angle {angle:.2f} rad, distance ~{distance:.2f} m")
+
+        if distance < 0.35:
+            print("[CUBE] Close enough – stopping.")
+            self.left_velocity = 0
+            self.right_velocity = 0
+        elif abs(angle) > 0.2:
+            print("[ADJUST] Aligning to cube")
+            self.left_velocity = 1.5 if angle > 0 else -1.5
+            self.right_velocity = -1.5 if angle > 0 else 1.5
+        else:
+            print("[FORWARD] Driving straight to cube")
+            self.left_velocity = 2.5
+            self.right_velocity = 2.5
 
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
@@ -92,18 +110,28 @@ class Robot:
 
         return None
 
+    def _get_cube_angle(self, box):
+        x_min, x_max, _, _ = box
+        width = self.image.shape[1]
+        x_center = (x_min + x_max) / 2
+        return ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
+
+    def _estimate_distance(self, box):
+        _, _, y_min, y_max = box
+        pixel_height = y_max - y_min
+        return 100.0 / pixel_height if pixel_height > 0 else float("inf")
+
     def _object_in_front(self, threshold=0.4):
         if not self.lidar:
             return False
 
         center = len(self.lidar) // 2
         span = 20
-        front_values = self.lidar[center - span:center + span + 1]
+        front = self.lidar[center - span:center + span + 1]
 
-        for d in front_values:
+        for d in front:
             if d is not None and d != float("inf") and d < threshold:
                 return True
-
         return False
 
     def _find_blobs(self, mask):
