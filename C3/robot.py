@@ -88,8 +88,8 @@ class Robot:
         if self.state == "adjusting":
             self.was_adjusting = True
 
-        # === 360° scan logic ===
-        if not self.target_box and not self.scanning:
+        # === 360° scan logic (ignore if blind_push is active) ===
+        if not self.target_box and not self.scanning and not self.blind_push:
             print("Starting scan – rotating to find cube")
             self.scanning = True
             self.scan_start_angle = self.robot.get_orientation()
@@ -109,7 +109,7 @@ class Robot:
                 self.state = "search"
             else:
                 self.state = "scanning"
-            # Return early to avoid triggering other states
+
             self.set_scan_velocity()
             return
 
