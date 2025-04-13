@@ -112,7 +112,6 @@ class Robot:
         return labeled_mask, label_id - 1
 
     def _estimate_cube_distance(self):
-        """Estimate distance to the blue cube based on bounding box height in the camera image."""
         if self.image is None or not self.blue_object_angles:
             return None
 
@@ -134,14 +133,19 @@ class Robot:
             y_min, x_min = pixels.min(axis=0)
             y_max, x_max = pixels.max(axis=0)
 
-            pixel_height = y_max - y_min
-            if pixel_height == 0:
-                continue
+            width = x_max - x_min
+            height = y_max - y_min
 
-            focal_length = 500
-            real_cube_height = 0.05
-            distance = (real_cube_height * focal_length) / pixel_height
-            return distance
+            aspect_ratio = height / width if width != 0 else 0
+
+            # Acceptable range for a square-like cube (tweak as needed)
+            if 0.8 < aspect_ratio < 1.2:
+                focal_length = 500
+                real_cube_height = 0.05
+                if height == 0:
+                    continue
+                distance = (real_cube_height * focal_length) / height
+                return distance
 
         return None
 
