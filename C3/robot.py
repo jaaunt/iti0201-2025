@@ -110,15 +110,19 @@ class Robot:
             return True
 
         width = len(self.lidar)
-        lidar_fov = np.pi  # eeldame 180 kraadi LIDAR vaadet
-        lidar_angle_per_pixel = lidar_fov / width
+        lidar_fov = np.pi
+        lidar_angle_per_index = lidar_fov / width
+        center_index = width // 2
+        angle_index = int(angle / lidar_angle_per_index)
+        index = center_index + angle_index
 
-        lidar_index = width // 2 + int(angle / lidar_angle_per_pixel)
+        check_range = 10
+        indices_to_check = range(max(0, index - check_range), min(width, index + check_range + 1))
 
-        if 0 <= lidar_index < width:
-            value = self.lidar[lidar_index]
+        for i in indices_to_check:
+            value = self.lidar[i]
             if value is not None and value < 0.5:
-                print(f"[WARNING] Obstacle detected at cube angle! LIDAR[{lidar_index}] = {value:.2f}")
+                print(f"[WARNING] Obstacle detected at LIDAR[{i}] = {value:.2f}")
                 return False
 
         return True
