@@ -163,8 +163,8 @@ class Robot:
             self.right_velocity = 0
         else:
             print("Driving forward toward cube")
-            self.left_velocity = 3.0
-            self.right_velocity = 3.0
+            self.left_velocity = 5.0
+            self.right_velocity = 5.0
 
     def _detect_non_blue_object(self):
         if self.image is None:
@@ -182,8 +182,24 @@ class Robot:
 
     def _handle_avoiding(self):
         print("Avoiding non-blue object – turning")
-        self.left_velocity = -2.0
-        self.right_velocity = 2.0
+
+        if self.lidar:
+            left = np.mean(self.lidar[:len(self.lidar) // 3])
+            right = np.mean(self.lidar[2 * len(self.lidar) // 3:])
+
+            if left > right:
+                # turn left if left side is clearer
+                self.left_velocity = -2.0
+                self.right_velocity = 2.0
+            else:
+                # turn right otherwise
+                self.left_velocity = 2.0
+                self.right_velocity = -2.0
+        else:
+            # default to turning
+            self.left_velocity = -2.0
+            self.right_velocity = 2.0
+
         self.avoid_timer -= 1
 
         if self.avoid_timer <= 0:
