@@ -79,7 +79,7 @@ class Robot:
             self.right_motor_speed = 1
             if self.current_time - self.previous_time > 3.0:
                 self.state = self.STATE_STOP
-                print("Robot lõpetas liikumise – kuupi ei leitud 3 sekundi jooksul.")
+                print("Robot lõpetas liikumise – kuupi ei leitud 3 sekundi jooksul. ")
 
     def _get_cube_angle_and_size(self) -> list | None:
         boxes = self._find_object_boxes()
