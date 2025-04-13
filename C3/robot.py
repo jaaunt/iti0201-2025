@@ -15,6 +15,8 @@ class Robot:
         self.right_velocity = 0
         self.state = "searching"
         self.avoid_timer = 0
+        self.detour_timer = 0
+        self.detour_direction = None
 
     def sense(self) -> None:
         self.image = self.robot.get_camera_rgb_image()
@@ -23,6 +25,10 @@ class Robot:
         self.target_box = self._find_blue_cube()
 
     def plan(self) -> None:
+        if self.state == "detour":
+            self._handle_detour()
+            return
+
         if self.state == "avoiding":
             self._handle_avoiding()
             return
@@ -38,10 +44,12 @@ class Robot:
         distance = self._estimate_distance(self.target_box)
         print(f"Cube angle: {angle:.2f} rad, estimated distance: {distance:.2f} m")
 
-        if self._obstacle_close_and_left_or_right():
-            print("Obstacle close ahead – entering avoidance mode")
-            self.state = "avoiding"
-            self.avoid_timer = 15
+        if self._object_in_front():
+            print("Object detected in path – initiating DETOUR")
+            self.state = "detour"
+            self.detour_timer = 30  # ~2s depending on tick rate
+            self.detour_direction = self._decide_detour_direction_by_camera()
+            print(f"Detour direction: {self.detour_direction}")
             return
 
         if distance < 0.35:
@@ -62,6 +70,27 @@ class Robot:
             self.left_velocity = forward_speed
             self.right_velocity = forward_speed
             self.state = "approaching"
+
+    def _handle_detour(self):
+        print(f"DETOUR mode – {self.detour_timer} ticks remaining")
+
+        if self.detour_timer > 20:
+            # 90-degree turn
+            if self.detour_direction == "left":
+                self.left_velocity = -2.0
+                self.right_velocity = 2.0
+            else:
+                self.left_velocity = 2.0
+                self.right_velocity = -2.0
+        else:
+            # drive straight to bypass object
+            self.left_velocity = 2.0
+            self.right_velocity = 2.0
+
+        self.detour_timer -= 1
+        if self.detour_timer <= 0:
+            print("Detour done – back to search")
+            self.state = "searching"
 
     def _handle_avoiding(self):
         print(f"Avoiding... {self.avoid_timer} ticks left")
@@ -120,8 +149,7 @@ class Robot:
             width = x_max - x_min
             height = y_max - y_min
 
-            max_size = 150
-            if abs(width - height) < 20 and height < max_size:
+            if abs(width - height) < 20 and height < 150:
                 return (x_min, x_max, y_min, y_max)
 
         return None
@@ -138,10 +166,8 @@ class Robot:
         pixel_height = y_max - y_min
         return 100.0 / pixel_height if pixel_height > 0 else float("inf")
 
-    def _obstacle_close_and_left_or_right(self, threshold=0.4):
-        left = self._sector_obstacle(-45, -10, threshold)
-        right = self._sector_obstacle(10, 45, threshold)
-        return left or right
+    def _object_in_front(self, threshold=0.4):
+        return self._sector_obstacle(-20, 20, threshold)
 
     def _sector_obstacle(self, start_deg, end_deg, threshold=0.5):
         if not self.lidar:
@@ -165,6 +191,23 @@ class Robot:
                 return True
 
         return False
+
+    def _decide_detour_direction_by_camera(self):
+        if self.image is None:
+            return "left"  # default
+
+        h, w, _ = self.image.shape
+        left_half = self.image[:, :w // 2]
+        right_half = self.image[:, w // 2:]
+
+        left_sum = left_half[:, :, 0].sum()
+        right_sum = right_half[:, :, 0].sum()
+
+        print(f"Camera analysis – Blue sum left: {left_sum}, right: {right_sum}")
+        if left_sum > right_sum:
+            return "right"
+        else:
+            return "left"
 
     def _find_blobs(self, mask):
         height, width = mask.shape
