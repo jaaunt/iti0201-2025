@@ -23,12 +23,9 @@ class Robot:
         self.act()
 
     def sense(self) -> None:
-        """Gather sensor data."""
         self.image = self.robot.get_camera_rgb_image()
         self.fov = self.robot.get_camera_field_of_view()
         self.lidar = self.robot.get_lidar_range_list()
-
-        print(f"[SENSE] Image: {'OK' if self.image is not None else 'None'}, FOV: {self.fov}, LIDAR len: {len(self.lidar) if self.lidar else 'None'}")
 
         boxes = self.get_cube_objects()
         if boxes:
@@ -36,54 +33,56 @@ class Robot:
             self.target_angle = self.calculate_angle(self.target_box)
             self.target_distance = self.estimate_distance(self.target_box)
             self.last_seen_time = self.robot.get_time()
-            print(f"[SENSE] Cube found: box={self.target_box}, angle={self.target_angle:.2f}, distance={self.target_distance:.2f}")
+
+            if self.state == "search":
+                print("Cube found")
         else:
-            print("[SENSE] No cube found")
             self.target_box = None
 
     def plan(self) -> None:
-        """Decide robot's next action."""
         current_time = self.robot.get_time()
-        print(f"[PLAN] State: {self.state}")
 
         if self.target_box:
             if abs(self.target_angle) > 0.1:
+                if self.state != "adjusting":
+                    print("Adjusting to face cube")
                 self.state = "adjusting"
             elif self.target_distance > 0.25:
+                if self.state != "driving":
+                    print("Driving toward cube")
                 self.state = "driving"
             else:
+                if self.state != "arrived":
+                    print("Arrived at cube")
                 self.state = "arrived"
         elif current_time - self.last_seen_time > 10:
+            if self.state != "search":
+                print("Searching for cube")
             self.state = "search"
 
         if self.state == "adjusting":
             self.left_velocity = 0.3 if self.target_angle > 0 else -0.3
             self.right_velocity = -self.left_velocity
-            print(f"[PLAN] Adjusting: angle={self.target_angle:.2f}")
 
         elif self.state == "driving":
             front_lidar = self.lidar[470:490] if self.lidar else []
             if any(d < 0.3 for d in front_lidar if d):
+                print("Obstacle detected, stopping")
                 self.left_velocity = 0
                 self.right_velocity = 0
-                print("[PLAN] Obstacle detected! Stopping.")
             else:
                 self.left_velocity = 1.5
                 self.right_velocity = 1.5
-                print(f"[PLAN] Driving toward cube. Distance: {self.target_distance:.2f}")
 
         elif self.state == "search":
             self.left_velocity = -0.5
             self.right_velocity = 0.5
-            print("[PLAN] Searching for cube...")
 
         elif self.state == "arrived":
             self.left_velocity = 0
             self.right_velocity = 0
-            print("[PLAN] Arrived at cube!")
 
     def act(self) -> None:
-        print(f"[ACT] Left velocity: {self.left_velocity:.2f}, Right velocity: {self.right_velocity:.2f}")
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
 
@@ -98,7 +97,6 @@ class Robot:
             green_channel = self.image[:, :, 1]
             red_channel = self.image[:, :, 2]
         except IndexError:
-            print("[IMAGE] Invalid image format")
             return None
 
         threshold = 50
@@ -118,9 +116,8 @@ class Robot:
 
             x_len = x_max - x_min
             y_len = y_max - y_min
-            if abs(x_len - y_len) <= 20:  # Cube-like
+            if abs(x_len - y_len) <= 20:
                 boxes.append((x_min, x_max, y_min, y_max))
-                print(f"[IMAGE] Detected cube-like object: {x_min}-{x_max}, {y_min}-{y_max}")
 
         return boxes if boxes else None
 
