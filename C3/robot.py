@@ -109,7 +109,7 @@ class Robot:
             return False
 
         center = len(self.lidar) // 2
-        span = 25
+        span = 40
         front_values = self.lidar[center - span : center + span + 1]
         valid = [d for d in front_values if d is not None and d != float("inf")]
         return any(d < 0.4 for d in valid)
