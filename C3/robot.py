@@ -16,6 +16,7 @@ class Robot:
         self.target_distance = None
         self.left_velocity = 0
         self.right_velocity = 0
+        self.avoiding_obstacle = False
 
     def spin(self) -> None:
         self.sense()
@@ -42,8 +43,29 @@ class Robot:
     def plan(self) -> None:
         current_time = self.robot.get_time()
 
-        if self.target_box:
-            if abs(self.target_angle) > 0.1:
+        # LIDAR scan regions
+        front = self.lidar[470:490] if self.lidar else []
+        left = self.lidar[400:470] if self.lidar else []
+        right = self.lidar[490:560] if self.lidar else []
+
+        min_front = min((d for d in front if d), default=1.0)
+        min_left = min((d for d in left if d), default=1.0)
+        min_right = min((d for d in right if d), default=1.0)
+        obstacle_close = min_front < 0.3 or min_left < 0.35 or min_right < 0.35
+
+        # Leave avoidance mode if obstacle is gone
+        if self.avoiding_obstacle and not obstacle_close:
+            print("Obstacle cleared, resuming cube tracking")
+            self.avoiding_obstacle = False
+
+        # Enter avoidance mode if needed
+        if obstacle_close:
+            if not self.avoiding_obstacle:
+                print("Obstacle detected, entering avoidance mode")
+                self.avoiding_obstacle = True
+            self.state = "avoiding"
+        elif self.target_box:
+            if abs(self.target_angle) > 0.1 and not self.avoiding_obstacle:
                 if self.state != "adjusting":
                     print("Adjusting to face cube")
                 self.state = "adjusting"
@@ -60,35 +82,24 @@ class Robot:
                 print("Searching for cube")
             self.state = "search"
 
+        # Movement control
         if self.state == "adjusting":
             self.left_velocity = 0.3 if self.target_angle > 0 else -0.3
             self.right_velocity = -self.left_velocity
 
         elif self.state == "driving":
-            # Wider LIDAR scan for better obstacle detection
-            left = self.lidar[400:470]
-            right = self.lidar[490:560]
-            front = self.lidar[470:490]
+            self.left_velocity = 1.5
+            self.right_velocity = 1.5
 
-            min_left = min((d for d in left if d), default=1.0)
-            min_right = min((d for d in right if d), default=1.0)
-            min_front = min((d for d in front if d), default=1.0)
-
-            if min_front < 0.3:
-                print("Obstacle ahead. Stopping.")
-                self.left_velocity = 0
-                self.right_velocity = 0
-            elif min_left < 0.35:
-                print("Obstacle on left. Steering right.")
+        elif self.state == "avoiding":
+            if min_left < min_right:
+                print("Avoiding: obstacle on left, turning right")
                 self.left_velocity = 1.2
-                self.right_velocity = 0.5
-            elif min_right < 0.35:
-                print("Obstacle on right. Steering left.")
-                self.left_velocity = 0.5
-                self.right_velocity = 1.2
+                self.right_velocity = 0.4
             else:
-                self.left_velocity = 1.5
-                self.right_velocity = 1.5
+                print("Avoiding: obstacle on right, turning left")
+                self.left_velocity = 0.4
+                self.right_velocity = 1.2
 
         elif self.state == "search":
             self.left_velocity = -0.5
