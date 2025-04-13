@@ -164,8 +164,8 @@ class Robot:
 
         elif self.state == "blind_push":
             print("Blind push: driving forward")
-            self.left_velocity = 1.2
-            self.right_velocity = 1.2
+            self.left_velocity = 3
+            self.right_velocity = 3
 
         elif self.state == "search":
             self.left_velocity = -0.5
