@@ -17,12 +17,12 @@ class Robot:
         self.left_velocity = 0
         self.right_velocity = 0
 
-        # Avoidance control
+        # Avoidance logic
         self.avoiding_obstacle = False
         self.avoid_start_time = 0.0
         self.avoid_duration = 1.2
 
-        # Post-avoid straight driving
+        # After avoidance forward motion
         self.post_avoid_forward = False
         self.post_avoid_start = 0.0
         self.post_avoid_duration = 1.0
@@ -52,7 +52,7 @@ class Robot:
     def plan(self) -> None:
         current_time = self.robot.get_time()
 
-        # LIDAR scan
+        # LIDAR scan regions
         front = self.lidar[470:490] if self.lidar else []
         left = self.lidar[400:470] if self.lidar else []
         right = self.lidar[490:560] if self.lidar else []
@@ -62,14 +62,14 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.5 or min_left < 0.5 or min_right < 0.5
 
-        # Finish avoidance
+        # End avoidance
         if self.avoiding_obstacle and current_time - self.avoid_start_time >= self.avoid_duration:
             print("Avoidance time ended, continuing straight")
             self.avoiding_obstacle = False
             self.post_avoid_forward = True
             self.post_avoid_start = current_time
 
-        # Start avoidance
+        # Enter avoidance
         if obstacle_close and not self.avoiding_obstacle:
             print("Obstacle detected, entering avoidance mode")
             self.avoiding_obstacle = True
@@ -91,7 +91,7 @@ class Robot:
                 if self.state != "adjusting":
                     print("Adjusting to face cube")
                 self.state = "adjusting"
-            elif self.target_distance > 0.25:
+            elif self.target_distance > 0.15 or min_front > 0.25:
                 if self.state != "driving":
                     print("Driving toward cube")
                 self.state = "driving"
@@ -105,7 +105,7 @@ class Robot:
                 print("Searching for cube")
             self.state = "search"
 
-        # Movement control
+        # --- Movement control ---
         if self.state == "adjusting":
             self.left_velocity = 0.3 if self.target_angle > 0 else -0.3
             self.right_velocity = -self.left_velocity
@@ -139,8 +139,7 @@ class Robot:
         self.robot.set_left_motor_velocity(self.left_velocity)
         self.robot.set_right_motor_velocity(self.right_velocity)
 
-    # --- Cube detection methods ---
-
+    # --- Cube detection ---
     def get_cube_objects(self) -> list | None:
         if self.image is None:
             return None
