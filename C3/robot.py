@@ -90,17 +90,22 @@ class Robot:
                 self.right_velocity = 0.5
                 return
 
-        elif self.target_box or self.has_pending_target:
+        elif self.target_angle is not None and self.target_distance is not None:
             if abs(self.target_angle) > 0.1:
-                print("Adjusting to face cube")
+                if self.state != "adjusting":
+                    print("Adjusting to face cube")
                 self.state = "adjusting"
+
             elif self.target_distance > 0.15:
-                print("Driving toward cube")
+                if self.state != "driving":
+                    print("Driving toward cube")
                 self.state = "driving"
+
             else:
-                print("Arrived at cube")
+
+                if self.state != "arrived":
+                    print("Arrived at cube")
                 self.state = "arrived"
-                self.has_pending_target = False
 
         elif current_time - self.last_seen_time > 10:
             print("Searching for cube")
