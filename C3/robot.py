@@ -9,13 +9,20 @@ class Robot:
     STATE_ALIGN = "ALIGN_TO_OBJ"
     STATE_DRIVE = "APPROACH"
     STATE_STOP = "ARRIVED"
+    STATE_FINAL_APPROACH = "FINAL_APPROACH"
 
     def __init__(self, robot_interface: object) -> None:
+        """Class initializer.
+
+        Args:
+            robot (object): An instance of a Turtlebot-like robot interface.
+        """
         self.robot = robot_interface
         self.image = None
         self.detected_target = None
         self.current_time = 0
         self.previous_time = 0
+        self.final_approach_start_time = 0
 
         self.left_motor_speed = -1
         self.right_motor_speed = 1
@@ -24,16 +31,30 @@ class Robot:
         self.object_boxes = []
 
     def spin(self) -> None:
+        """Spin the robot.
+
+        This is the main loop where the robot performs its sense-plan-act cycle.
+        """
         self.sense()
         self.plan()
         self.act()
 
     def sense(self) -> None:
+        """Gather sensor data.
+
+        Use the robot's sensors to collect data about its environment.
+        This method updates internal state variables based on sensor readings.
+        """
         self.image = self.robot.get_camera_rgb_image()
         self.detected_target = self._get_cube_angle_and_size()
         self.current_time = self.robot.get_time()
 
     def plan(self):
+        """Plan the robot's actions.
+
+        Process the data collected during sensing and decide the next course
+        of action for the robot.
+        """
         match self.state:
             case self.STATE_START:
                 self.left_motor_speed = 1
@@ -60,12 +81,24 @@ class Robot:
             case self.STATE_DRIVE:
                 self._drive_to_target()
 
+            case self.STATE_FINAL_APPROACH:
+                self.left_motor_speed = 1
+                self.right_motor_speed = 1
+                if self.current_time - self.final_approach_start_time > 1.0:
+                    self.state = self.STATE_STOP
+                    print("Robot on nüüd täielikult peatunud.")
+
             case self.STATE_STOP:
                 self.left_motor_speed = 0
                 self.right_motor_speed = 0
                 print("Robot on peatunud.")
 
     def act(self) -> None:
+        """Execute planned actions.
+
+        Perform the actions decided in the planning step, such as moving or
+        interacting with the environment.
+        """
         self.robot.set_left_motor_velocity(self.left_motor_speed)
         self.robot.set_right_motor_velocity(self.right_motor_speed)
 
@@ -78,8 +111,9 @@ class Robot:
             self.left_motor_speed = 1
             self.right_motor_speed = 1
             if self.current_time - self.previous_time > 3.0:
-                self.state = self.STATE_STOP
-                print("Robot lõpetas liikumise – kuupi ei leitud 3 sekundi jooksul. ")
+                self.state = self.STATE_FINAL_APPROACH
+                self.final_approach_start_time = self.current_time
+                print("Kuup kadus, liigun veel 1 sekundi edasi.")
 
     def _get_cube_angle_and_size(self) -> list | None:
         boxes = self._find_object_boxes()
