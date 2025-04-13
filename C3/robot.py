@@ -68,7 +68,7 @@ class Robot:
         min_right = min((d for d in right if d), default=1.0)
         obstacle_close = min_front < 0.5 or min_left < 0.5 or min_right < 0.5
 
-        # Remember if we just adjusted
+        # Track if we were adjusting
         if self.state == "adjusting":
             self.was_adjusting = True
 
@@ -118,8 +118,8 @@ class Robot:
                     print("Arrived at cube")
                 self.state = "arrived"
 
-        elif self.target_box is None and self.was_adjusting and not self.blind_push:
-            print("Cube lost after adjustment. Starting blind push")
+        elif self.target_box is None and not self.blind_push and self.state in ["adjusting", "driving"]:
+            print("Cube lost after tracking. Starting blind push")
             self.blind_push = True
             self.blind_push_start = current_time
             self.was_adjusting = False
