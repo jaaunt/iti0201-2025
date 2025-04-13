@@ -1,4 +1,4 @@
-"""C3."""
+"""Robot navigation logic for detecting and driving toward a blue cube."""
 import numpy as np
 
 
