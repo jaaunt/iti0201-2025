@@ -1,40 +1,212 @@
+"""C1 updated for C3."""
 from __future__ import annotations
 import math
 import numpy as np
 
 
 class Robot:
-    """Turtlebot robot solving C3 task: approach blue cube, avoid obstacles."""
-
     def __init__(self, robot: object) -> None:
+        self.detected_objects = []
         self.robot = robot
-        self.image = None
-        self.fov = None
-        self.lidar = None
+        self.has_faced_object = False
         self.state = "search"
-        self.start_angle = None
-        self.best_box = None
-        self.state_start_time = None
-        self.left_velocity = 0.0
-        self.right_velocity = 0.0
+        self.left_velocity = 0
+        self.right_velocity = 0
 
     def sense(self) -> None:
-        self.image = self.robot.get_camera_rgb_image()
-        self.fov = self.robot.get_camera_field_of_view()
+        self.time = self.robot.get_time()
         self.lidar = self.robot.get_lidar_range_list()
+        self.left_motor_ticks = self.robot.get_left_motor_encoder_ticks()
+        self.right_motor_ticks = self.robot.get_right_motor_encoder_ticks()
+        self.lidar_object_detection()
+        if self.state == "search" or self.state == "approaching":
+            self.image = self.robot.get_camera_rgb_image()
+            self.fov = self.robot.get_camera_field_of_view()
+            self.blue_object_angles = self._get_blue_object_angles()
+
+    def lidar_object_detection(self):
+        if self.lidar is None:
+            self.range_list = []
+            return
+        else:
+            self.range_list = self.lidar
+
+        objects = []
+        in_object = False
+        start_idx = None
+
+        min_cluster_size = 1
+        distance_jump_threshold = 0.3
+
+        for i in range(1, len(self.range_list)):
+            prev = self.range_list[i - 1]
+            curr = self.range_list[i]
+
+            if curr is None or prev is None or curr == float('inf') or prev == float('inf'):
+                in_object = False
+                continue
+
+            if not in_object and abs(curr - prev) > distance_jump_threshold and curr < prev:
+                in_object = True
+                start_idx = i
+
+            elif in_object and abs(curr - prev) > distance_jump_threshold and curr > prev:
+                if i - start_idx >= min_cluster_size:
+                    center_idx = round(start_idx + (i - start_idx) / 2)
+                    objects.append((self.range_list[center_idx], self._get_angle(center_idx)))
+                in_object = False
+
+        self.detected_objects = self._filter_objects(objects)
+
+    def _get_blue_object_angles(self):
+        if self.image is None or self.fov is None:
+            return []
+
+        blue_channel = self.image[:, :, 0]
+        green_channel = self.image[:, :, 1]
+        red_channel = self.image[:, :, 2]
+        threshold = 50
+
+        mask = (blue_channel > green_channel + threshold) & (blue_channel > red_channel + threshold)
+        labeled_mask, label_count = self._find_blobs(mask)
+
+        if label_count == 0:
+            return []
+
+        height, width = self.image.shape[:2]
+        angles = []
+
+        for i in range(1, label_count + 1):
+            pixels = np.column_stack(np.where(labeled_mask == i))
+            if pixels.size == 0:
+                continue
+            y_min, x_min = pixels.min(axis=0)
+            y_max, x_max = pixels.max(axis=0)
+            x_center = (x_min + x_max) / 2
+            angle = ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
+            angles.append(angle)
+        return angles
+
+    def _find_blobs(self, mask):
+        height, width = mask.shape
+        labeled_mask = np.zeros_like(mask, dtype=np.uint32)
+
+        label_id = 1
+        to_visit = []
+        neighbours = ((-1, 0), (1, 0), (0, -1), (0, 1))
+
+        for y, x in np.argwhere(mask):
+            if labeled_mask[y, x] == 0:
+                labeled_mask[y, x] = label_id
+                to_visit.append((y, x))
+                while to_visit:
+                    current_y, current_x = to_visit.pop()
+                    for dy, dx in neighbours:
+                        new_y, new_x = current_y + dy, current_x + dx
+                        if 0 <= new_y < height and 0 <= new_x < width:
+                            if mask[new_y, new_x] and labeled_mask[new_y, new_x] == 0:
+                                labeled_mask[new_y, new_x] = label_id
+                                to_visit.append((new_y, new_x))
+                label_id += 1
+
+        return labeled_mask, label_id - 1
+
+    def _estimate_cube_distance(self):
+        if not self.image or not self.blue_object_angles:
+            return None
+
+        blue_channel = self.image[:, :, 0]
+        green_channel = self.image[:, :, 1]
+        red_channel = self.image[:, :, 2]
+        threshold = 50
+
+        mask = (blue_channel > green_channel + threshold) & (blue_channel > red_channel + threshold)
+        labeled_mask, label_count = self._find_blobs(mask)
+
+        if label_count == 0:
+            return None
+
+        for i in range(1, label_count + 1):
+            pixels = np.column_stack(np.where(labeled_mask == i))
+            if pixels.size == 0:
+                continue
+            y_min, x_min = pixels.min(axis=0)
+            y_max, x_max = pixels.max(axis=0)
+
+            pixel_height = y_max - y_min
+            if pixel_height == 0:
+                continue
+
+            focal_length = 500
+            real_cube_height = 0.05
+            distance = (real_cube_height * focal_length) / pixel_height
+            return distance
+
+        return None
+
+    def _get_angle(self, index):
+        num_points = len(self.range_list)
+        fov = 2 * math.pi
+        angle_per_step = fov / num_points
+        return index * angle_per_step
+
+    def _filter_objects(self, objects):
+        min_distance_threshold = 0.2
+        return [obj for obj in objects if obj[0] > min_distance_threshold]
 
     def plan(self) -> None:
-        if self.state == "search":
-            self._handle_search()
-        elif self.state == "approach":
-            self._handle_approach()
-        elif self.state == "avoid_obstacle":
-            self._handle_avoid_obstacle()
-        elif self.state == "drive":
-            self._handle_drive()
-        elif self.state == "finished":
-            self.left_velocity = 0
-            self.right_velocity = 0
+        state_actions = {
+            "search": self._handle_search,
+            "approaching": self._handle_approaching,
+            "fixing_trajectory": self._handle_fixing_trajectory,
+            "finished": self._handle_finished,
+        }
+
+        if self.state in state_actions:
+            state_actions[self.state]()
+
+    def _handle_search(self):
+        self.left_velocity = -2.0
+        self.right_velocity = 2.0
+        print("SEARCHING for cube...")
+        if self.blue_object_angles:
+            if -0.05 < self.blue_object_angles[0] < 0.05:
+                self.left_velocity = 0.0
+                self.right_velocity = 0.0
+                self.state = "approaching"
+                print("Cube FOUND and centered!")
+
+    def _handle_approaching(self):
+        print("APPROACHING the cube...")
+        self.left_velocity = 1.5
+        self.right_velocity = 1.5
+
+        cube_distance = self._estimate_cube_distance()
+
+        if cube_distance is not None:
+            print(f"Estimated distance: {cube_distance:.2f} m")
+            if cube_distance < 0.3:
+                self.state = "finished"
+                print("I, FINISHED")
+        else:
+            self.state = "search"
+            print("Lost the cube, returning to search...")
+
+    def _handle_fixing_trajectory(self):
+        print("FIXING trajectory...")
+        if self.detected_objects[0][1] < 4.65:
+            self.left_velocity = -0.4
+            self.right_velocity = 0.4
+        elif self.detected_objects[0][1] > 4.7:
+            self.left_velocity = 0.4
+            self.right_velocity = -0.4
+        else:
+            self.state = "approaching"
+
+    def _handle_finished(self):
+        self.left_velocity = 0
+        self.right_velocity = 0
+        print("I, END(myself)")
 
     def act(self) -> None:
         self.robot.set_left_motor_velocity(self.left_velocity)
@@ -44,133 +216,3 @@ class Robot:
         self.sense()
         self.plan()
         self.act()
-
-    def _handle_search(self):
-        boxes = self._get_blue_cubes()
-        if boxes:
-            self.best_box = min(boxes, key=lambda b: self._estimate_distance(b))
-            print("Blue cube found. Switching to approach.")
-            self.state = "approach"
-        else:
-            self.left_velocity = -1.0
-            self.right_velocity = 1.0
-
-    def _handle_approach(self):
-        if self.best_box is None:
-            self.state = "search"
-            return
-        angle = self._bounding_box_angle(self.best_box)
-        if self._is_obstacle_in_path(angle):
-            print("Obstacle in path. Switching to avoidance.")
-            self.state = "avoid_obstacle"
-            self.state_start_time = self.robot.get_time()
-        else:
-            self.state = "drive"
-
-    def _handle_avoid_obstacle(self):
-        direction = self._choose_clear_side()
-        t = self.robot.get_time()
-        if self.state_start_time is None:
-            self.state_start_time = t
-
-        elapsed = t - self.state_start_time
-        if elapsed < 1.5:
-            self.left_velocity = -1.0 if direction == "left" else 1.0
-            self.right_velocity = 1.0 if direction == "left" else -1.0
-        elif elapsed < 3.0:
-            self.left_velocity = 2.0
-            self.right_velocity = 2.0
-        else:
-            print("Avoided obstacle. Returning to search.")
-            self.state = "search"
-            self.best_box = None
-            self.state_start_time = None
-
-    def _handle_drive(self):
-        if self.best_box is None:
-            self.state = "search"
-            return
-
-        angle = self._bounding_box_angle(self.best_box)
-        dist = self._estimate_distance(self.best_box)
-
-        if abs(angle) > 0.05:
-            self.left_velocity = 0.3 if angle > 0 else -0.3
-            self.right_velocity = -0.3 if angle > 0 else 0.3
-        elif dist > 0.4:
-            self.left_velocity = 2.0
-            self.right_velocity = 2.0
-        else:
-            print("Arrived at cube. Task complete.")
-            self.left_velocity = 0.0
-            self.right_velocity = 0.0
-            self.state = "finished"
-
-    def _get_blue_cubes(self):
-        if self.image is None:
-            return []
-
-        blue = self.image[:, :, 0]
-        green = self.image[:, :, 1]
-        red = self.image[:, :, 2]
-        mask = (blue > green + 50) & (blue > red + 50)
-        label_mask, count = self._find_blobs(mask)
-
-        boxes = []
-        for i in range(1, count + 1):
-            pixels = np.column_stack(np.where(label_mask == i))
-            if pixels.size == 0:
-                continue
-            y_min, x_min = pixels.min(axis=0)
-            y_max, x_max = pixels.max(axis=0)
-            if abs((x_max - x_min) - (y_max - y_min)) < 20:
-                boxes.append((x_min, x_max, y_min, y_max))
-
-        return boxes
-
-    def _find_blobs(self, mask):
-        height, width = mask.shape
-        label_mask = np.zeros_like(mask, dtype=np.uint32)
-        label_id = 1
-        to_visit = []
-        neighbours = ((-1, 0), (1, 0), (0, -1), (0, 1))
-
-        for y, x in np.argwhere(mask):
-            if label_mask[y, x] == 0:
-                label_mask[y, x] = label_id
-                to_visit.append((y, x))
-                while to_visit:
-                    cy, cx = to_visit.pop()
-                    for dy, dx in neighbours:
-                        ny, nx = cy + dy, cx + dx
-                        if 0 <= ny < height and 0 <= nx < width:
-                            if mask[ny, nx] and label_mask[ny, nx] == 0:
-                                label_mask[ny, nx] = label_id
-                                to_visit.append((ny, nx))
-                label_id += 1
-
-        return label_mask, label_id - 1
-
-    def _bounding_box_angle(self, box):
-        x_min, x_max, _, _ = box
-        x_center = (x_min + x_max) / 2
-        width = self.image.shape[1]
-        angle = ((x_center - width / 2) / (width / 2)) * (self.fov / 2)
-        return angle
-
-    def _estimate_distance(self, box):
-        _, _, y_min, y_max = box
-        height = y_max - y_min
-        return 1.0 / (height + 1e-6) * 30
-
-    def _is_obstacle_in_path(self, target_angle):
-        center_index = 480 + int(target_angle / (self.fov / 640))
-        check_range = self.lidar[max(0, center_index - 5):min(640, center_index + 5)]
-        return any(d is not None and d < 0.6 for d in check_range)
-
-    def _choose_clear_side(self):
-        left = self.lidar[0:320]
-        right = self.lidar[320:640]
-        left_clear = np.nanmean([d for d in left if d and d != float('inf')])
-        right_clear = np.nanmean([d for d in right if d and d != float('inf')])
-        return "left" if left_clear > right_clear else "right"
