@@ -262,16 +262,26 @@ class Robot:
     def update_frontier_and_path(self):
         """Update the current frontier and the shortest planned path to it."""
         frontiers = self.find_frontiers()
-        if not frontiers:  # if there are no frontiers left its done reset
+        print(f"[DEBUG] Found frontiers: {frontiers}")
+
+        if not frontiers:
+            print("[DEBUG] No frontiers left to explore.")
             self.frontier = None
             self.path = []
             return
-        self.frontier = self.choose_closest_frontier(frontiers)  # get the closest frontier
-        path = self.find_path(self.pos, self.frontier)  # get the path
 
-        if len(path) > 1:
+        self.frontier = self.choose_closest_frontier(frontiers)
+        print(f"[DEBUG] Chosen frontier: {self.frontier}")
+        print(f"[DEBUG] Current position: {self.pos}")
+        print(f"[DEBUG] Map keys: {list(self.map.keys())}")
+
+        path = self.find_path(self.pos, self.frontier)
+        print(f"[DEBUG] Computed path: {path}")
+
+        if path and len(path) > 1:
             self.path = path
         else:
+            print(f"[DEBUG] Path invalid or too short: {path}")
             self.path = []
 
     def sense(self) -> None:
@@ -299,11 +309,18 @@ class Robot:
         Perform the actions decided in the planning step, such as moving or
         interacting with the environment.
         """
-        # guard against too short of paths, so there wont be list index out of range bs
-        if self.path and len(self.path) > 1:
-            next_step = self.path[1]
-            self.pos = next_step
-            self.path.pop(0)
+        if not self.path:
+            print("[DEBUG] No path available.")
+            return
+
+        if len(self.path) < 2:
+            print(f"[DEBUG] Path too short to act: {self.path}")
+            return
+
+        next_step = self.path[1]
+        print(f"[DEBUG] Moving from {self.pos} to {next_step}")
+        self.pos = next_step
+        self.path.pop(0)
 
     def spin(self) -> None:
         """Spin the robot.
@@ -313,3 +330,4 @@ class Robot:
         self.sense()
         self.plan()
         self.act()
+        self.update_frontier_and_path()
