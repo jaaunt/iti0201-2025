@@ -309,18 +309,6 @@ class Robot:
         Perform the actions decided in the planning step, such as moving or
         interacting with the environment.
         """
-        if not self.path:
-            print("[DEBUG] No path available.")
-            return
-
-        if len(self.path) < 2:
-            print(f"[DEBUG] Path too short to act: {self.path}")
-            return
-
-        next_step = self.path[1]
-        print(f"[DEBUG] Moving from {self.pos} to {next_step}")
-        self.pos = next_step
-        self.path.pop(0)
 
     def spin(self) -> None:
         """Spin the robot.
