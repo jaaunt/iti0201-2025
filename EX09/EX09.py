@@ -221,7 +221,7 @@ class Robot:
     def choose_closest_frontier(self, frontiers: list):
         min_dist = float('inf')
         best = None
-        for fx, fy in frontiers:
+        for fx, fy in sorted(frontiers):
             dist = abs(fx - self.pos[0]) + abs(
                 fy - self.pos[1])  # manhattan distance, takes one frontier and the robots current position
             if dist < min_dist:  # if the dist is smaller than others must be the closes or best to check next
