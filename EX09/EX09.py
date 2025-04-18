@@ -207,15 +207,12 @@ class Robot:
     def find_frontiers(self):
         """Find traversable cells next to unknown ones (frontier cells)."""
         frontiers = []
-        for cell in self.traversable_cells:  # look thourgh traversable cells
-            if cell in self.mapped_cells:  # if alr mapped skip
-                continue
-            x, y = cell  # get coords
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # possiible movement directions
-                neighbor = (x + dx, y + dy)  # get the neighbour, add the direction to current cell
-                if neighbor not in self.traversable_cells:  # if a neighbour hasnt been traversed it must be frontier
-                    frontiers.append(cell)
-                    break
+        for cell in self.mapped_cells:  # every mapped cell
+            x, y = cell
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # look at its neightbours
+                neighbor = (x + dx, y + dy)
+                if neighbor in self.traversable_cells and neighbor not in self.mapped_cells:  # if the neighbour is traversable but not mapped its a frontire
+                    frontiers.append(neighbor)
         return frontiers
 
     def choose_closest_frontier(self, frontiers: list):
