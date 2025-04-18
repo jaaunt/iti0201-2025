@@ -248,9 +248,12 @@ class Robot:
                     frontier.put((priority, neighbor))
                     came_from[neighbor] = current
 
+        if goal not in came_from:
+            return []  # no path found
+
         path = []
         node = goal
-        while node is not None:  # backtrack for the path, starting from the goal to the star, add each cell traversed to get to it to the list
+        while node is not None:
             path.append(node)
             node = came_from.get(node)
         path.reverse()
