@@ -267,7 +267,12 @@ class Robot:
             self.path = []
             return
         self.frontier = self.choose_closest_frontier(frontiers)  # get the closest frontier
-        self.path = self.find_path(self.pos, self.frontier)  # get the path
+        path = self.find_path(self.pos, self.frontier)  # get the path
+
+        if len(path) > 1:
+            self.path = path
+        else:
+            self.path = []
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -294,7 +299,11 @@ class Robot:
         Perform the actions decided in the planning step, such as moving or
         interacting with the environment.
         """
-        pass
+        # guard against too short of paths, so there wont be list index out of range bs
+        if self.path and len(self.path) > 1:
+            next_step = self.path[1]
+            self.pos = next_step
+            self.path.pop(0)
 
     def spin(self) -> None:
         """Spin the robot.
