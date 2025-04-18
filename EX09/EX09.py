@@ -261,22 +261,23 @@ class Robot:
 
     def update_frontier_and_path(self):
         """Update the current frontier and the shortest planned path to it."""
+        # a lot of print for testing locally
         frontiers = self.find_frontiers()
-        print(f"[DEBUG] Found frontiers: {frontiers}")
+        print(f"Found frontiers: {frontiers}")
 
         if not frontiers:
-            print("[DEBUG] No frontiers left to explore.")
+            print("No frontiers left to explore.")
             self.frontier = None
             self.path = []
             return
 
         self.frontier = self.choose_closest_frontier(frontiers)
-        print(f"[DEBUG] Chosen frontier: {self.frontier}")
-        print(f"[DEBUG] Current position: {self.pos}")
-        print(f"[DEBUG] Map keys: {list(self.map.keys())}")
+        print(f"Chosen frontier: {self.frontier}")
+        print(f"Current position: {self.pos}")
+        print(f"Map keys: {list(self.map.keys())}")
 
         path = self.find_path(self.pos, self.frontier)
-        print(f"[DEBUG] Computed path: {path}")
+        print(f"Computed path: {path}")
 
         if path and len(path) > 1:
             self.path = path
