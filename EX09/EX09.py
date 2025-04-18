@@ -200,7 +200,7 @@ class Robot:
             This means the robot should travel through the listed cells to reach the
             frontier at (3, 0).
         """
-        if self.frontier and self.path:
+        if self.frontier is not None and self.path:
             return [self.frontier, self.path]
         return []
 
