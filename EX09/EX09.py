@@ -90,7 +90,7 @@ class Robot:
         """
         # traversable_cells = self.get_traversable_cells()
         # return [cell for cell in traversable_cells if cell not in self.mapped_cells]
-        return list(cell for cell in self.traversable_cells if cell not in self.mapped_cells)
+        return list(self.unmapped_cells)
 
     def get_map(self) -> dict:
         """Get the map representation as a dictionary of adjacency.
@@ -216,15 +216,7 @@ class Robot:
         return frontiers
 
     def choose_closest_frontier(self, frontiers: list):
-        min_dist = float('inf')
-        best = None
-        for fx, fy in sorted(frontiers):
-            dist = abs(fx - self.pos[0]) + abs(
-                fy - self.pos[1])  # manhattan distance, takes one frontier and the robots current position
-            if dist < min_dist:  # if the dist is smaller than others must be the closes or best to check next
-                min_dist = dist
-                best = (fx, fy)
-        return best
+        return min(frontiers, key=lambda cell: (abs(cell[0] - self.pos[0]) + abs(cell[1] - self.pos[1]), cell))
 
     def find_path(self, start: tuple, goal: tuple) -> list:
         """Use A* to find the shortest path from start to goal."""
