@@ -22,7 +22,7 @@ def find_wall(span):
     smallest_avg = None
     # find the wall by looking for the span with the most similar values on average
     for s in spans:
-        if len(s) > 9:  # do not look at shorter lists, 9 was chosen through trial and error
+        if len(s) > 9 and len(s) >= 2:  # do not look at shorter lists, 9 was chosen through trial and error
             diffs = []
             for i in range(len(s) - 1):
                 diffs.append(abs(s[i] - s[i + 1]))
