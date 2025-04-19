@@ -211,7 +211,7 @@ class Robot:
             x, y = cell
             for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 neighbor = (x + dx, y + dy)
-                if neighbor in self.traversable_cells and neighbor not in self.mapped_cells:
+                if neighbor in self.unmapped_cells:
                     frontiers.add(neighbor)
         return list(frontiers)
 
