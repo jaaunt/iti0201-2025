@@ -126,8 +126,8 @@ class Robot:
             index = up_index - 160 * i
             if index < -640:
                 index += 640
-            left_bound = max(index - self.BOUND, -640)
-            right_bound = min(index + self.BOUND, 640)
+            left_bound = index - self.BOUND
+            right_bound = index + self.BOUND
             if right_bound > 0:
                 span = self.lidar[left_bound:] + self.lidar[:right_bound]
             elif left_bound < -640:
@@ -206,18 +206,18 @@ class Robot:
 
     def find_frontiers(self):
         """Find traversable cells next to unknown ones (frontier cells)."""
-        frontiers = set()
-        for cell in self.mapped_cells:
+        frontiers = []
+        for cell in self.mapped_cells:  # every mapped cell
             x, y = cell
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:  # look at its neightbours
                 neighbor = (x + dx, y + dy)
-                if neighbor in self.unmapped_cells:
-                    frontiers.add(neighbor)
-        return list(frontiers)
+                if neighbor in self.traversable_cells and neighbor not in self.mapped_cells:  # if the neighbour is traversable but not mapped its a frontire
+                    frontiers.append(neighbor)
+        return frontiers
 
     def choose_closest_frontier(self, frontiers: list):
         """Find the closest frontier."""
-        return min(frontiers, key=lambda cell: (abs(cell[0] - self.pos[0]) + abs(cell[1] - self.pos[1]), cell[1], cell[0]))
+        return min(frontiers, key=lambda cell: (abs(cell[0] - self.pos[0]) + abs(cell[1] - self.pos[1]), cell))
 
     def find_path(self, start: tuple, goal: tuple) -> list:
         """Use A* to find the shortest path from start to goal."""
