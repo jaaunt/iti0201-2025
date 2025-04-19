@@ -160,15 +160,21 @@ class Robot:
                     y -= 1  # down
                 else:
                     x += 1  # right
-                self.traversable_cells.add((x, y))
-                if step == 1:  # if neighbor
-                    self.add_to_map(self.pos, (x, y))
-                    self.add_to_map((x, y), self.pos)
+
+                neighbor = (x, y)
+                self.traversable_cells.add(neighbor)
+                if neighbor not in self.mapped_cells:
+                    self.unmapped_cells.add(neighbor)
+
+                if step == 1:
+                    self.add_to_map(self.pos, neighbor)
+                    self.add_to_map(neighbor, self.pos)
+
                 threshold += self.EDGE_LENGTH
                 step += 1
 
-        # current position has been mapped
         self.mapped_cells.add(self.pos)
+        self.unmapped_cells.discard(self.pos)
 
     def add_to_map(self, from_cell, to_cell):
         """Add a new map entry."""
