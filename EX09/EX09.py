@@ -151,37 +151,24 @@ class Robot:
             threshold = 0.9
             x, y = self.pos
             step = 1
-            max_dist = lidar
-            while threshold <= max_dist:
+            while lidar >= threshold:
                 if i == 0:
-                    y += 1
+                    y += 1  # up
                 elif i == 1:
-                    x -= 1
+                    x -= 1  # left
                 elif i == 2:
-                    y -= 1
-                elif i == 3:
-                    x += 1
-                prev = self.pos
-                for step in range(1, int(lidar / self.EDGE_LENGTH) + 1):
-                    if i == 0:
-                        y = self.pos[1] + step
-                        x = self.pos[0]
-                    elif i == 1:
-                        x = self.pos[0] - step
-                        y = self.pos[1]
-                    elif i == 2:
-                        y = self.pos[1] - step
-                        x = self.pos[0]
-                    else:
-                        x = self.pos[0] + step
-                        y = self.pos[1]
+                    y -= 1  # down
+                else:
+                    x += 1  # right
+                self.traversable_cells.add((x, y))
+                if step == 1:  # if neighbor
+                    self.add_to_map(self.pos, (x, y))
+                    self.add_to_map((x, y), self.pos)
+                threshold += self.EDGE_LENGTH
+                step += 1
 
-                    cell = (x, y)
-                    self.traversable_cells.add(cell)
-                    self.unmapped_cells.add(cell)
-                    self.add_to_map(prev, cell)
-                    self.add_to_map(cell, prev)
-                    prev = cell
+        # current position has been mapped
+        self.mapped_cells.add(self.pos)
 
     def add_to_map(self, from_cell, to_cell):
         """Add a new map entry."""
