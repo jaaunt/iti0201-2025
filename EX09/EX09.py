@@ -115,8 +115,13 @@ class Robot:
 
     def get_directional_lidar(self):
         """Extract lidar readings for up, left, down, right directions."""
+
+        def get_lidar_segment(start, end):
+            length = len(self.lidar)
+            return [self.lidar[i % length] for i in range(start, end)]
+
         directional_lidar = []
-        start_angle = self.orientation - math.pi / 2  # the angle where lidar range list begins, first readings is 90 degrees clockwise from the front
+        start_angle = self.orientation - math.pi / 2
         if start_angle < 0:
             start_angle += 2 * math.pi
         diff = 2 * math.pi - start_angle
@@ -124,22 +129,13 @@ class Robot:
 
         for i in range(4):
             index = up_index - 160 * i
-            if index < -640:
-                index += 640
             left_bound = index - self.BOUND
             right_bound = index + self.BOUND
-            if right_bound > 0:
-                span = self.lidar[left_bound:] + self.lidar[:right_bound]
-            elif left_bound < -640:
-                span = self.lidar[left_bound + 640:] + self.lidar[:right_bound + 640]
-            else:
-                span = self.lidar[left_bound:right_bound]
+            span = get_lidar_segment(left_bound, right_bound)
             span = [i for i in span if not math.isinf(i)]
             span = find_wall(span)
-            if not span:
-                directional_lidar.append(0)
-            else:
-                directional_lidar.append(max(span))
+            directional_lidar.append(max(span) if span else 0)
+
         return directional_lidar
 
     def map_cell(self):
