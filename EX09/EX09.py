@@ -126,8 +126,8 @@ class Robot:
             index = up_index - 160 * i
             if index < -640:
                 index += 640
-            left_bound = index - self.BOUND
-            right_bound = index + self.BOUND
+            left_bound = max(index - self.BOUND, -640)
+            right_bound = min(index + self.BOUND, 640)
             if right_bound > 0:
                 span = self.lidar[left_bound:] + self.lidar[:right_bound]
             elif left_bound < -640:
