@@ -219,10 +219,7 @@ class Robot:
 
     def choose_closest_frontier(self, frontiers: list):
         """Find the closest frontier."""
-        return min(
-            frontiers,
-            key=lambda cell: (abs(cell[0] - self.pos[0]) + abs(cell[1] - self.pos[1]), cell[1], cell[0])
-        )
+        return min(frontiers, key=lambda cell: (abs(cell[0] - self.pos[0]) + abs(cell[1] - self.pos[1]), cell))
 
     def find_path(self, start: tuple, goal: tuple) -> list:
         """Use A* to find the shortest path from start to goal."""
