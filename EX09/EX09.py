@@ -90,7 +90,7 @@ class Robot:
         """
         # traversable_cells = self.get_traversable_cells()
         # return [cell for cell in traversable_cells if cell not in self.mapped_cells]
-        return list(self.unmapped_cells)
+        return list(cell for cell in self.traversable_cells if cell not in self.mapped_cells)
 
     def get_map(self) -> dict:
         """Get the map representation as a dictionary of adjacency.
