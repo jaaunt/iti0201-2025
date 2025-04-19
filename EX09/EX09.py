@@ -151,28 +151,24 @@ class Robot:
             threshold = 0.9
             x, y = self.pos
             step = 1
-            while lidar >= threshold:
+            max_dist = lidar
+            while threshold <= max_dist:
                 if i == 0:
-                    y += 1  # up
+                    y += 1
                 elif i == 1:
-                    x -= 1  # left
+                    x -= 1
                 elif i == 2:
-                    y -= 1  # down
-                else:
-                    x += 1  # right
-
-                neighbor = (x, y)
-                self.traversable_cells.add(neighbor)
-                if neighbor not in self.mapped_cells:
-                    self.unmapped_cells.add(neighbor)
-
+                    y -= 1
+                elif i == 3:
+                    x += 1
+                cell = (x, y)
+                self.traversable_cells.add(cell)
+                self.unmapped_cells.add(cell)
                 if step == 1:
-                    self.add_to_map(self.pos, neighbor)
-                    self.add_to_map(neighbor, self.pos)
-
+                    self.add_to_map(self.pos, cell)
+                    self.add_to_map(cell, self.pos)
                 threshold += self.EDGE_LENGTH
                 step += 1
-
         self.mapped_cells.add(self.pos)
         self.unmapped_cells.discard(self.pos)
 
