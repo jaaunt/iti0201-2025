@@ -13,13 +13,23 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
+
+        # cells
         self.traversable_cells = [(0, 0)]
         self.unmapped_cells = []
         self.map = {}
+
+        # data you get from sense
         self.lidar = None
         self.orientation = None
+
+        # other variables
         self.current_position = None  # current (x, y) grid position
         self.frontier = None   # the target unmapped cell and the path to it
+
+        # constants
+        self.CELL_SIZE = 0.625
+        self.DISTANCE_THRESHOLD = 0.5
 
     def get_traversable_cells(self) -> list:
         """Return known traversable cells."""
@@ -45,8 +55,8 @@ class Robot:
         if self.lidar:
             self.front = self.lidar[480]  # front (0 degrees)
             self.back = self.lidar[150]  # back (180 degrees)
-            self.right = self.lidar[1]  # right (270 degrees)
             self.left = self.lidar[320]  # left (90 degrees)
+            self.right = self.lidar[1]  # right (270 degrees)
 
     def add_cells(self, cell, direction):
         """Add traversable cells in a given direction from current position."""
@@ -79,6 +89,7 @@ class Robot:
     def mapping(self):
         """Map the environment based on current orientation and LIDAR readings."""
         orientation = self.orientation  # robots current orientation
+
         lidar_distances = {  # lidar readings for each direction of the robot
             "front": self.front,
             "back": self.back,
@@ -123,8 +134,8 @@ class Robot:
 
         for raw_direction, mapped_direction in direction_map.items():  # raw robots direction mapped what it is for the map
             distance = lidar_distances[raw_direction]  # get the lidar distance in that direction
-            if distance > 0.5:  # if its bigger than 0.5 theres probably enough space for it to be a cell
-                num_cells = int(distance // 0.625)  # how many cells in that direction
+            if distance > self.DISTANCE_THRESHOLD:  # if its bigger than 0.5 theres probably enough space for it to be a cell
+                num_cells = int(distance // self.CELL_SIZE)  # how many cells in that direction
                 self.add_cells(num_cells, mapped_direction)
 
     def get_frontier_and_path(self) -> list:
