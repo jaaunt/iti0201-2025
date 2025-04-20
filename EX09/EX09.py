@@ -18,8 +18,8 @@ class Robot:
         self.map = {}
         self.lidar = None
         self.orientation = None
-        self.current_position = None
-        self.frontier = None
+        self.current_position = None  # current (x, y) grid position
+        self.frontier = None   # the target unmapped cell and the path to it
 
     def get_traversable_cells(self) -> list:
         """Return known traversable cells."""
@@ -43,18 +43,17 @@ class Robot:
         self.lidar = self.robot.get_lidar_range_list()
         self.current_position = self.robot.get_current_position()
         if self.lidar:
-            self.front = self.lidar[480]
-            self.back = self.lidar[150]
-            self.right = self.lidar[1]
-            self.left = self.lidar[320]
+            self.front = self.lidar[480]  # front (0 degrees)
+            self.back = self.lidar[150]  # back (180 degrees)
+            self.right = self.lidar[1]  # right (270 degrees)
+            self.left = self.lidar[320]  # left (90 degrees)
 
     def add_cells(self, cell, direction):
         """Add traversable cells in a given direction from current position."""
-        x, y = self.current_position
-        directions = {
+        x, y = self.current_position  # start from current position
+        directions = {  # possible directions and how the values would have to change for them
             "up": (0, 1),
             "down": (0, -1),
-            "back": (0, -1),
             "left": (-1, 0),
             "right": (1, 0)
         }
@@ -80,7 +79,7 @@ class Robot:
         if self.front > 0.45:
             self.add_cells(int(self.front // 0.625), "up")
         if self.back > 0.45:
-            self.add_cells(int(self.back // 0.625), "back")
+            self.add_cells(int(self.back // 0.625), "down")
         if self.right > 0.45:
             self.add_cells(int(self.right // 0.625), "right")
         if self.left > 0.45:
@@ -95,7 +94,7 @@ class Robot:
         if self.right > 0.45:
             self.add_cells(int(self.right // 0.625), "up")
         if self.left > 0.45:
-            self.add_cells(int(self.left // 0.625), "back")
+            self.add_cells(int(self.left // 0.625), "down")
 
     def facing_east(self):
         """Map surroundings assuming robot is facing east (-π/2 rad)."""
@@ -104,14 +103,14 @@ class Robot:
         if self.back > 0.45:
             self.add_cells(int(self.back // 0.625), "left")
         if self.right > 0.45:
-            self.add_cells(int(self.right // 0.625), "back")
+            self.add_cells(int(self.right // 0.625), "down")
         if self.left > 0.45:
             self.add_cells(int(self.left // 0.625), "up")
 
     def facing_south(self):
         """Map surroundings assuming robot is facing south (π rad)."""
         if self.front > 0.45:
-            self.add_cells(int(self.front // 0.625), "back")
+            self.add_cells(int(self.front // 0.625), "down")
         if self.back > 0.45:
             self.add_cells(int(self.back // 0.625), "up")
         if self.right > 0.45:
