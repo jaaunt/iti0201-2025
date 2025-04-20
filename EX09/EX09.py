@@ -58,24 +58,31 @@ class Robot:
             "right": (1, 0)
         }
 
-        if direction not in directions:
+        if direction not in directions:  # incase theres an odd case that isnt mentioned in directions
             return
 
-        dx, dy = directions[direction]
+        dx, dy = directions[direction]  # get the direction coordinates based on which way it is
 
         for c in range(1, cell + 1):
             coordinates = (x + dx * c, y + dy * c)
 
+            # for the first step link it to the robots current position
             if c == 1:
                 self.map.setdefault(self.current_position, []).append(coordinates)
                 self.map.setdefault(coordinates, []).append(self.current_position)
 
+            # otherwise add it if its not seen yet
             if coordinates not in self.traversable_cells:
                 self.traversable_cells.append(coordinates)
                 self.unmapped_cells.append(coordinates)
 
     def facing_north(self):
         """Map surroundings assuming robot is facing north (0 rad)."""
+        # this is neccecary since the robot isnt always facing the same directuion
+        # so up down left right direction finding should take that into consideration
+        # case where the robot is facing north
+        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
+        # if the distance is more than 0.45 theres probably an open cell in that direction
         if self.front > 0.45:
             self.add_cells(int(self.front // 0.625), "up")
         if self.back > 0.45:
@@ -87,6 +94,9 @@ class Robot:
 
     def facing_west(self):
         """Map surroundings assuming robot is facing west (π/2 rad)."""
+        # case where the robot is facing west
+        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
+        # if the distance is more than 0.45 theres probably an open cell in that direction
         if self.front > 0.45:
             self.add_cells(int(self.front // 0.625), "left")
         if self.back > 0.45:
@@ -98,6 +108,9 @@ class Robot:
 
     def facing_east(self):
         """Map surroundings assuming robot is facing east (-π/2 rad)."""
+        # case where the robot is facing east
+        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
+        # if the distance is more than 0.45 theres probably an open cell in that direction
         if self.front > 0.45:
             self.add_cells(int(self.front // 0.625), "right")
         if self.back > 0.45:
@@ -109,6 +122,9 @@ class Robot:
 
     def facing_south(self):
         """Map surroundings assuming robot is facing south (π rad)."""
+        # case where the robot is facing south
+        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
+        # if the distance is more than 0.45 theres probably an open cell in that direction
         if self.front > 0.45:
             self.add_cells(int(self.front // 0.625), "down")
         if self.back > 0.45:
@@ -120,12 +136,16 @@ class Robot:
 
     def mapping(self):
         """Determine orientation and map based on direction the robot is facing."""
+        # facing close to 0 radians=north
         if -0.1 < self.orientation < 0.1:
             self.facing_north()
+        # facing close to pi/2 radians=west
         elif 1.47 < self.orientation < 1.67:
             self.facing_west()
+        # facing close to -pi/2 radians=east
         elif -1.67 < self.orientation < -1.47:
             self.facing_east()
+        # facing close to + or - pi radians=south
         elif self.orientation > (math.pi - 0.1) or self.orientation < (-math.pi + 0.1):
             self.facing_south()
 
@@ -155,55 +175,69 @@ class Robot:
         return self.frontier
 
     def find_frontier(self):
-        """Find the closest unmapped cell and compute a path using A*."""
-        if not self.unmapped_cells:
+        """Find the closest unmapped cell and compute a path using A* algorithm."""
+        if not self.unmapped_cells:  # if it isnt an unmapped cell dont do anything
             return
 
-        min_distance = float('inf')
+        min_distance = float('inf')  # since havent found yet, start in a case where the min distance is too far, so it gets overwritten for sure
         closest_cell = None
 
+        # pick the closest unmapped cell using Manhattan distance
         for cell in self.unmapped_cells:
-            distance = abs(cell[0] - self.current_position[0]) + abs(cell[1] - self.current_position[1])
+            distance = abs(cell[0] - self.current_position[0]) + abs(cell[1] - self.current_position[1])  # manhatten distance
             if distance < min_distance:
                 min_distance = distance
                 closest_cell = cell
 
+        # plan a path using a* algorithm
         path = self.a_star(self.current_position, closest_cell)
         self.frontier = (closest_cell, path)
 
+        # remove from list once its being planned to explore
         if closest_cell in self.unmapped_cells:
             self.unmapped_cells.remove(closest_cell)
 
     def a_star(self, start, goal):
         """A* pathfinding algorithm using Manhattan distance heuristic."""
         frontier = PriorityQueue()
-        frontier.put((0, start))
-        came_from = {start: None}
-        cost_so_far = {start: 0}
+        frontier.put((0, start))  # start from current position
+        came_from = {start: None}  # track how we reached each cell
+        cost_so_far = {start: 0}  # track the cost to reach each cell
 
-        while not frontier.empty():
-            _, current = frontier.get()
+        while not frontier.empty():  # only works when there are frontiers that havent been explored
+            _, current = frontier.get()  # priorityque gets 2 values priority and the item
+            # this priority doesnt matter to me since i calculate my own priority, i only need which cell it is
 
-            if current == goal:
+            if current == goal:  # if you reached the goal already stop
                 break
 
+            # loop through all neighboring cells of the current cell
             for neighbor in self.map.get(current, []):
-                new_cost = cost_so_far[current] + 1
+                new_cost = cost_so_far[current] + 1  # add the movement cost(its always 1)
+
+                # check if this is the first time we see this neighboring cell,
+                # or if its a shorter path to it
                 if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
-                    cost_so_far[neighbor] = new_cost
+                    cost_so_far[neighbor] = new_cost  # update the cost to reach this neighbour cell
+                    # calculate priority like this = total cost so far + estimated cost to goal (calculate it with manhattan distance)
                     priority = new_cost + abs(goal[0] - neighbor[0]) + abs(goal[1] - neighbor[1])
+                    # add this neighbor cell to the frontier to be explored ordered by priority
                     frontier.put((priority, neighbor))
+                    # remember how we got to this neighbor for path reconstruction later
                     came_from[neighbor] = current
 
-        # Reconstruct path
+        # reconstruct path
         if goal not in came_from:
             return []
 
-        path = []
-        current = goal
+        path = []  # store path here
+        current = goal # start going back from the goal cell
+        # keep going backwards through came_from map until we reach the starting cell
         while current is not None:
             path.append(current)
             current = came_from[current]
+        # since the path is though backtrackin its in reverse
+        # so you have to reverse it to be the right way
         path.reverse()
         return path
 
@@ -213,9 +247,9 @@ class Robot:
         Process the data collected during sensing and decide the next course
         of action for the robot.
         """
-        if self.lidar:
+        if self.lidar:  # if theres lidar data start mapping
             self.mapping()
-        self.find_frontier()
+        self.find_frontier() # find the next frontier
 
     def act(self) -> None:
         """Execute planned actions.
