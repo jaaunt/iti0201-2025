@@ -74,17 +74,17 @@ class Robot:
         dx, dy = directions[direction]  # get the direction coordinates based on which way it is
 
         for step in range(1, cell + 1):
-            coordinates = (x + dx * step, y + dy * step)
+            next_cell_coords = (x + dx * step, y + dy * step)
 
             # for the first step link it to the robots current position
             if step == 1:
-                self.map.setdefault(self.current_position, []).append(coordinates)
-                self.map.setdefault(coordinates, []).append(self.current_position)
+                self.map.setdefault(self.current_position, []).append(next_cell_coords)
+                self.map.setdefault(next_cell_coords, []).append(self.current_position)
 
             # otherwise add it if its not seen yet
-            if coordinates not in self.traversable_cells:
-                self.traversable_cells.append(coordinates)
-                self.unmapped_cells.append(coordinates)
+            if next_cell_coords not in self.traversable_cells:
+                self.traversable_cells.append(next_cell_coords)
+                self.unmapped_cells.append(next_cell_coords)
 
     def mapping(self):
         """Map the environment based on current orientation and LIDAR readings."""
