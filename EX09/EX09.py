@@ -212,7 +212,7 @@ class Robot:
                 # or if its a shorter path to it
                 if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
                     cost_so_far[neighbor] = new_cost  # update the cost to reach this neighbour cell
-                    # calculate priority like this = total cost so far + estimated cost to goal (calculate it with manhattan distance)
+                    # calculate priority like this = total cost so far + manhattan distance)
                     priority = new_cost + self.manhattan(neighbor, goal)
                     # add this neighbor cell to the frontier to be explored ordered by priority
                     frontier.put((priority, neighbor))
