@@ -43,6 +43,10 @@ class Robot:
         """Return the map as a dictionary of cell adjacencies."""
         return self.map
 
+    def manhattan(self, a, b):
+        """Calculate Manhattan distance between two cells."""
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
     def sense(self) -> None:
         """Gather sensor data.
 
@@ -209,7 +213,7 @@ class Robot:
                 if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
                     cost_so_far[neighbor] = new_cost  # update the cost to reach this neighbour cell
                     # calculate priority like this = total cost so far + estimated cost to goal (calculate it with manhattan distance)
-                    priority = new_cost + abs(goal[0] - neighbor[0]) + abs(goal[1] - neighbor[1])
+                    priority = new_cost + self.manhattan(neighbor, goal)
                     # add this neighbor cell to the frontier to be explored ordered by priority
                     frontier.put((priority, neighbor))
                     # remember how we got to this neighbor for path reconstruction later
