@@ -4,10 +4,14 @@ from queue import PriorityQueue
 
 
 class Robot:
-    """Turtlebot robot for environment mapping and exploration."""
+    """Turtlebot robot."""
 
     def __init__(self, robot: object) -> None:
-        """Initialize the robot and mapping state."""
+        """Class initializer.
+
+        Args:
+            robot (object): An instance of a Turtlebot-like robot interface.
+        """
         self.robot = robot
         self.traversable_cells = [(0, 0)]
         self.unmapped_cells = []
@@ -30,7 +34,11 @@ class Robot:
         return self.map
 
     def sense(self) -> None:
-        """Update LIDAR, orientation, and current position from robot sensors."""
+        """Gather sensor data.
+
+        Use the robot's sensors to collect data about its environment.
+        This method updates internal state variables based on sensor readings.
+        """
         self.orientation = self.robot.get_orientation()
         self.lidar = self.robot.get_lidar_range_list()
         self.current_position = self.robot.get_current_position()
@@ -123,7 +131,28 @@ class Robot:
             self.facing_south()
 
     def get_frontier_and_path(self) -> list:
-        """Return the current frontier and the path to it."""
+        """Identify next frontier for exploration and calculate the path to reach it.
+
+        The frontier is the boundary between the known (mapped) and unknown (unmapped)
+        regions of the map. This method determines the most suitable frontier to
+        explore next and computes the path from the robot's current position to that
+        frontier. Formula for choosing the next frontier to explore: Manhattan distance
+
+        Returns:
+            [(int, int), [(int, int), ...]]:
+            - The first element is a tuple (x, y) representing the coordinates of the
+              selected frontier.
+            - The second element is a list of tuples [(x1, y1), (x2, y2), ...]
+              representing the sequence of grid cells (coordinates) the robot should
+              traverse in order to reach the frontier.
+
+        Example:
+            Suppose the robot's current position is (0, 0), and it detects a frontier
+            at (3, 0). The function might return:
+                [(3, 0), [(0, 0), (1, 0), (2, 0), (3, 0)]]
+            This means the robot should travel through the listed cells to reach the
+            frontier at (3, 0).
+        """
         return self.frontier
 
     def find_frontier(self):
@@ -180,17 +209,28 @@ class Robot:
         return path
 
     def plan(self) -> None:
-        """Perform mapping and pathfinding logic for current time step."""
+        """Plan the robot's actions.
+
+        Process the data collected during sensing and decide the next course
+        of action for the robot.
+        """
         if self.lidar:
             self.mapping()
         self.find_frontier()
 
     def act(self) -> None:
-        """Placeholder for robot's actions (if needed)."""
+        """Execute planned actions.
+
+        Perform the actions decided in the planning step, such as moving or
+        interacting with the environment.
+        """
         pass
 
     def spin(self) -> None:
-        """Run one iteration of sense-plan-act."""
+        """Spin the robot.
+
+        This is the main loop where the robot performs its sense-plan-act cycle.
+        """
         self.sense()
         self.plan()
         self.act()
