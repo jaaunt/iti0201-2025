@@ -7,37 +7,42 @@ class Robot:
     """Turtlebot robot."""
 
     def __init__(self, robot: object) -> None:
-        """Class initializer."""
+        """Initialize the robot."""
         self.robot = robot
-        self.traversable_cells = [(0, 0)]
-        self.unmapped_cells = []
         self.map = {}
+        self.traversable_cells = {(0, 0)}
+        self.unmapped_cells = {(0, 0)}
         self.lidar = None
         self.orientation = None
-        self.current_position = None
+        self.pos = None
         self.frontier = None
 
     def get_traversable_cells(self) -> list:
-        return self.traversable_cells
+        """Return known traversable cells."""
+        return list(self.traversable_cells)
 
     def get_unmapped_cells(self) -> list:
-        return self.unmapped_cells
+        """Return discovered but unmapped cells."""
+        return list(self.unmapped_cells)
 
     def get_map(self) -> dict:
+        """Return the adjacency map."""
         return self.map
 
     def sense(self) -> None:
+        """Gather sensor data."""
         self.orientation = self.robot.get_orientation()
         self.lidar = self.robot.get_lidar_range_list()
-        self.current_position = self.robot.get_current_position()
+        self.pos = self.robot.get_current_position()
         if self.lidar:
             self.front = self.lidar[480]
             self.back = self.lidar[150]
             self.right = self.lidar[1]
             self.left = self.lidar[320]
 
-    def add_cells(self, cell, direction):
-        x, y = self.current_position
+    def add_cells(self, count: int, direction: str) -> None:
+        """Add reachable cells in a given direction."""
+        x, y = self.pos
         directions = {
             "up": (0, 1),
             "down": (0, -1),
@@ -46,132 +51,95 @@ class Robot:
             "right": (1, 0)
         }
 
-        if direction not in directions:
-            return
-
         dx, dy = directions[direction]
 
-        for c in range(1, cell + 1):
-            coord = (x + dx * c, y + dy * c)
+        for i in range(1, count + 1):
+            cell = (x + dx * i, y + dy * i)
 
-            if c == 1:
-                self.map.setdefault(self.current_position, []).append(coord)
-                self.map.setdefault(coord, []).append(self.current_position)
+            if i == 1:
+                self.map.setdefault(self.pos, []).append(cell)
+                self.map.setdefault(cell, []).append(self.pos)
 
-            if coord not in self.traversable_cells:
-                self.traversable_cells.append(coord)
-                self.unmapped_cells.append(coord)
+            if cell not in self.traversable_cells:
+                self.traversable_cells.add(cell)
+                self.unmapped_cells.add(cell)
 
-    def case1(self):
-        if self.front > 0.45:
-            cell = self.front // 0.625
-            self.add_cells(int(cell), "up")
-        if self.back > 0.45:
-            cell = self.back // 0.625
-            self.add_cells(int(cell), "back")
-        if self.right > 0.45:
-            cell = self.right // 0.625
-            self.add_cells(int(cell), "right")
-        if self.left > 0.45:
-            cell = self.left // 0.625
-            self.add_cells(int(cell), "left")
-
-    def case2(self):
-        if self.front > 0.45:
-            cell = self.front // 0.625
-            self.add_cells(int(cell), "left")
-        if self.back > 0.45:
-            cell = self.back // 0.625
-            self.add_cells(int(cell), "right")
-        if self.right > 0.45:
-            cell = self.right // 0.625
-            self.add_cells(int(cell), "up")
-        if self.left > 0.45:
-            cell = self.left // 0.625
-            self.add_cells(int(cell), "back")
-
-    def case3(self):
-        if self.front > 0.45:
-            cell = self.front // 0.625
-            self.add_cells(int(cell), "right")
-        if self.back > 0.45:
-            cell = self.back // 0.625
-            self.add_cells(int(cell), "left")
-        if self.right > 0.45:
-            cell = self.right // 0.625
-            self.add_cells(int(cell), "back")
-        if self.left > 0.45:
-            cell = self.left // 0.625
-            self.add_cells(int(cell), "up")
+    def map_by_direction(self, dir_map):
+        """Map reachable cells using direction mapping."""
+        readings = {
+            "front": self.front,
+            "back": self.back,
+            "right": self.right,
+            "left": self.left
+        }
+        for sensor, distance in readings.items():
+            if distance > 0.45:
+                self.add_cells(int(distance // 0.625), dir_map[sensor])
 
     def mapping(self):
+        """Perform mapping based on orientation using direction mapping."""
         if -0.1 < self.orientation < 0.1:
-            self.case1()
-        if 1.47 < self.orientation < 1.67:
-            self.case2()
-        if -1.67 < self.orientation < -1.47:
-            self.case3()
-        if self.orientation > (math.pi - 0.1) or self.orientation < (-math.pi + 0.1):
-            if self.front > 0.45:
-                cell = self.front // 0.625
-                self.add_cells(int(cell), "back")
-            if self.back > 0.45:
-                cell = self.back // 0.625
-                self.add_cells(int(cell), "up")
-            if self.right > 0.45:
-                cell = self.right // 0.625
-                self.add_cells(int(cell), "left")
-            if self.left > 0.45:
-                cell = self.left // 0.625
-                self.add_cells(int(cell), "right")
+            dir_map = {"front": "up", "back": "down", "right": "right", "left": "left"}
+        elif 1.47 < self.orientation < 1.67:
+            dir_map = {"front": "left", "back": "right", "right": "up", "left": "down"}
+        elif -1.67 < self.orientation < -1.47:
+            dir_map = {"front": "right", "back": "left", "right": "down", "left": "up"}
+        elif self.orientation > (math.pi - 0.1) or self.orientation < (-math.pi + 0.1):
+            dir_map = {"front": "down", "back": "up", "right": "left", "left": "right"}
+        else:
+            return  # unknown orientation, do nothing
+
+        self.map_by_direction(dir_map)
 
     def get_frontier_and_path(self) -> list:
+        """Return the current frontier and path."""
         return self.frontier
 
-    def find_frontier(self):
+    def find_frontier(self) -> None:
+        """Find the closest unmapped cell and path to it."""
         if not self.unmapped_cells:
             return
 
-        min_distance = float('inf')
-        closest_cell = None
-
+        min_dist = float("inf")
+        closest = None
         for cell in self.unmapped_cells:
-            distance = abs(cell[0] - self.current_position[0]) + abs(cell[1] - self.current_position[1])
-            if distance < min_distance:
-                min_distance = distance
-                closest_cell = cell
+            dist = abs(cell[0] - self.pos[0]) + abs(cell[1] - self.pos[1])
+            if dist < min_dist:
+                min_dist = dist
+                closest = cell
 
-        def bfs(start, goal):
-            queue = deque()
-            queue.append((start, [start]))
-            visited = set()
-            visited.add(start)
+        path = self.bfs(self.pos, closest)
+        self.frontier = (closest, path)
+        self.unmapped_cells.discard(closest)
 
-            while queue:
-                current, path = queue.popleft()
-                if current == goal:
-                    return path
+    def bfs(self, start, goal):
+        """Breadth-first search to find a path."""
+        queue = deque()
+        queue.append((start, [start]))
+        visited = {start}
 
-                for neighbor in self.map.get(current, []):
-                    if neighbor not in visited:
-                        visited.add(neighbor)
-                        queue.append((neighbor, path + [neighbor]))
-            return []
-
-        path = bfs(self.current_position, closest_cell)
-        self.frontier = (closest_cell, path)
-        if closest_cell in self.unmapped_cells:
-            self.unmapped_cells.remove(closest_cell)
+        while queue:
+            current, path = queue.popleft()
+            if current == goal:
+                return path
+            for neighbor in self.map.get(current, []):
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append((neighbor, path + [neighbor]))
+        return []
 
     def plan(self) -> None:
+        """Plan next steps based on mapping and pathfinding."""
         if self.lidar:
             self.mapping()
         self.find_frontier()
 
     def act(self) -> None:
+        """Placeholder for acting."""
         pass
 
     def spin(self) -> None:
+        """Sense, plan, and act loop."""
         self.sense()
         self.plan()
         self.act()
