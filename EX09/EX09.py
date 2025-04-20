@@ -1,14 +1,13 @@
 """EX09: Mapping the Environment."""
 import math
-from collections import deque
 from queue import PriorityQueue
 
 
 class Robot:
-    """Turtlebot robot."""
+    """Turtlebot robot for environment mapping and exploration."""
 
     def __init__(self, robot: object) -> None:
-        """Class initializer."""
+        """Initialize the robot and mapping state."""
         self.robot = robot
         self.traversable_cells = [(0, 0)]
         self.unmapped_cells = []
@@ -19,15 +18,19 @@ class Robot:
         self.frontier = None
 
     def get_traversable_cells(self) -> list:
+        """Return known traversable cells."""
         return self.traversable_cells
 
     def get_unmapped_cells(self) -> list:
+        """Return cells discovered but not yet mapped with LIDAR."""
         return self.unmapped_cells
 
     def get_map(self) -> dict:
+        """Return the map as a dictionary of cell adjacencies."""
         return self.map
 
     def sense(self) -> None:
+        """Update LIDAR, orientation, and current position from robot sensors."""
         self.orientation = self.robot.get_orientation()
         self.lidar = self.robot.get_lidar_range_list()
         self.current_position = self.robot.get_current_position()
@@ -38,6 +41,7 @@ class Robot:
             self.left = self.lidar[320]
 
     def add_cells(self, cell, direction):
+        """Add traversable cells in a given direction from current position."""
         x, y = self.current_position
         directions = {
             "up": (0, 1),
@@ -53,83 +57,77 @@ class Robot:
         dx, dy = directions[direction]
 
         for c in range(1, cell + 1):
-            coord = (x + dx * c, y + dy * c)
+            coordinates = (x + dx * c, y + dy * c)
 
             if c == 1:
-                self.map.setdefault(self.current_position, []).append(coord)
-                self.map.setdefault(coord, []).append(self.current_position)
+                self.map.setdefault(self.current_position, []).append(coordinates)
+                self.map.setdefault(coordinates, []).append(self.current_position)
 
-            if coord not in self.traversable_cells:
-                self.traversable_cells.append(coord)
-                self.unmapped_cells.append(coord)
+            if coordinates not in self.traversable_cells:
+                self.traversable_cells.append(coordinates)
+                self.unmapped_cells.append(coordinates)
 
-    def case1(self):
+    def facing_north(self):
+        """Map surroundings assuming robot is facing north (0 rad)."""
         if self.front > 0.45:
-            cell = self.front // 0.625
-            self.add_cells(int(cell), "up")
+            self.add_cells(int(self.front // 0.625), "up")
         if self.back > 0.45:
-            cell = self.back // 0.625
-            self.add_cells(int(cell), "back")
+            self.add_cells(int(self.back // 0.625), "back")
         if self.right > 0.45:
-            cell = self.right // 0.625
-            self.add_cells(int(cell), "right")
+            self.add_cells(int(self.right // 0.625), "right")
         if self.left > 0.45:
-            cell = self.left // 0.625
-            self.add_cells(int(cell), "left")
+            self.add_cells(int(self.left // 0.625), "left")
 
-    def case2(self):
+    def facing_west(self):
+        """Map surroundings assuming robot is facing west (π/2 rad)."""
         if self.front > 0.45:
-            cell = self.front // 0.625
-            self.add_cells(int(cell), "left")
+            self.add_cells(int(self.front // 0.625), "left")
         if self.back > 0.45:
-            cell = self.back // 0.625
-            self.add_cells(int(cell), "right")
+            self.add_cells(int(self.back // 0.625), "right")
         if self.right > 0.45:
-            cell = self.right // 0.625
-            self.add_cells(int(cell), "up")
+            self.add_cells(int(self.right // 0.625), "up")
         if self.left > 0.45:
-            cell = self.left // 0.625
-            self.add_cells(int(cell), "back")
+            self.add_cells(int(self.left // 0.625), "back")
 
-    def case3(self):
+    def facing_east(self):
+        """Map surroundings assuming robot is facing east (-π/2 rad)."""
         if self.front > 0.45:
-            cell = self.front // 0.625
-            self.add_cells(int(cell), "right")
+            self.add_cells(int(self.front // 0.625), "right")
         if self.back > 0.45:
-            cell = self.back // 0.625
-            self.add_cells(int(cell), "left")
+            self.add_cells(int(self.back // 0.625), "left")
         if self.right > 0.45:
-            cell = self.right // 0.625
-            self.add_cells(int(cell), "back")
+            self.add_cells(int(self.right // 0.625), "back")
         if self.left > 0.45:
-            cell = self.left // 0.625
-            self.add_cells(int(cell), "up")
+            self.add_cells(int(self.left // 0.625), "up")
+
+    def facing_south(self):
+        """Map surroundings assuming robot is facing south (π rad)."""
+        if self.front > 0.45:
+            self.add_cells(int(self.front // 0.625), "back")
+        if self.back > 0.45:
+            self.add_cells(int(self.back // 0.625), "up")
+        if self.right > 0.45:
+            self.add_cells(int(self.right // 0.625), "left")
+        if self.left > 0.45:
+            self.add_cells(int(self.left // 0.625), "right")
 
     def mapping(self):
+        """Determine orientation and map based on direction the robot is facing."""
         if -0.1 < self.orientation < 0.1:
-            self.case1()
+            self.facing_north()
         elif 1.47 < self.orientation < 1.67:
-            self.case2()
+            self.facing_west()
         elif -1.67 < self.orientation < -1.47:
-            self.case3()
+            self.facing_east()
         elif self.orientation > (math.pi - 0.1) or self.orientation < (-math.pi + 0.1):
-            if self.front > 0.45:
-                cell = self.front // 0.625
-                self.add_cells(int(cell), "back")
-            if self.back > 0.45:
-                cell = self.back // 0.625
-                self.add_cells(int(cell), "up")
-            if self.right > 0.45:
-                cell = self.right // 0.625
-                self.add_cells(int(cell), "left")
-            if self.left > 0.45:
-                cell = self.left // 0.625
-                self.add_cells(int(cell), "right")
+            self.facing_south()
 
     def get_frontier_and_path(self) -> list:
+        """Return the current frontier and the path to it."""
         return self.frontier
 
     def find_frontier(self):
+        """Find the closest unmapped cell and compute a path using A*."""
         if not self.unmapped_cells:
             return
 
@@ -149,7 +147,7 @@ class Robot:
             self.unmapped_cells.remove(closest_cell)
 
     def a_star(self, start, goal):
-        """A* search using Manhattan distance."""
+        """A* pathfinding algorithm using Manhattan distance heuristic."""
         frontier = PriorityQueue()
         frontier.put((0, start))
         came_from = {start: None}
@@ -182,14 +180,17 @@ class Robot:
         return path
 
     def plan(self) -> None:
+        """Perform mapping and pathfinding logic for current time step."""
         if self.lidar:
             self.mapping()
         self.find_frontier()
 
     def act(self) -> None:
+        """Placeholder for robot's actions (if needed)."""
         pass
 
     def spin(self) -> None:
+        """Run one iteration of sense-plan-act."""
         self.sense()
         self.plan()
         self.act()
