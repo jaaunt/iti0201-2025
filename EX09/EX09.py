@@ -44,23 +44,13 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
-        self.orientation = None
-        self.pos = None
-        self.lidar = None
-
-        # enviroment stuff
+        self.traversable_cells = [(0, 0)]
+        self.unmapped_cells = []
         self.map = {}
-        self.mapped_cells = set()
-        self.traversable_cells = {(0, 0)}
-        self.unmapped_cells = {(0, 0)}  # to make it easier to get the value
+        self.lidar = None
+        self.orientation = None
+        self.current_position = None
         self.frontier = None
-        self.path = []
-
-        # constants
-        self.EDGE_LENGTH = 0.615
-        self.DIRECTIONS = [0, math.pi / 2, math.pi, 3 * math.pi / 2]  # up, left, down, right
-        self.LIDAR_STEP = 2 * math.pi / 640  # 360 degrees divided by lidar range list length
-        self.BOUND = 30
 
     def get_traversable_cells(self) -> list:
         """Get a list of all known traversable cells in the map.
@@ -115,45 +105,71 @@ class Robot:
 
     def get_directional_lidar(self):
         """Extract lidar readings for up, left, down, right directions."""
-        def clean(val):
-            return val if not math.isinf(val) else 0
+        directional_lidar = []
+        start_angle = self.orientation - math.pi / 2
+        if start_angle < 0:
+            start_angle += 2 * math.pi
+        diff = 2 * math.pi - start_angle
+        up_index = -int(diff / self.LIDAR_STEP)
 
-        return {
-            "front": clean(self.lidar[480]),
-            "right": clean(self.lidar[1]),
-            "left": clean(self.lidar[320]),
-            "back": clean(self.lidar[150])
-        }
+        for i in range(4):
+            index = up_index - 160 * i
+            if index < -640:
+                index += 640
+            left_bound = index - self.BOUND
+            right_bound = index + self.BOUND
+
+            # normalize bounds into valid index ranges
+            left = left_bound % 640
+            right = right_bound % 640
+
+            # Handle wrapping
+            if left < right:
+                span = self.lidar[left:right]
+            else:
+                span = self.lidar[left:] + self.lidar[:right]
+
+            # check how many INF values
+            inf_count = sum(1 for val in span if math.isinf(val))
+            if inf_count > len(span) * 0.9:
+                # too many infs: treat as wall too far to measure
+                directional_lidar.append(5.0)  # just assume max reachable
+            else:
+                span = [v for v in span if not math.isinf(v)]
+                wall_span = find_wall(span)
+                if not wall_span:
+                    directional_lidar.append(0)
+                else:
+                    directional_lidar.append(max(wall_span))
+        return directional_lidar
 
     def map_cell(self):
         """Map the current cell."""
-        x, y = self.pos
-        lidar_readings = self.get_directional_lidar()
+        directional_lidar = self.get_directional_lidar()  # lidar readings for up, left, down, right directions
+        # look at the lidar readings in each direction and determine if cells are reachable
+        for i in range(4):
+            lidar = directional_lidar[i]
+            threshold = 0.9
+            x, y = self.current_position
+            step = 1
+            while lidar >= threshold:
+                if i == 0:
+                    y += 1  # up
+                elif i == 1:
+                    x -= 1  # left
+                elif i == 2:
+                    y -= 1  # down
+                else:
+                    x += 1  # right
+                self.traversable_cells.add((x, y))
+                if step == 1:  # if neighbor
+                    self.add_to_map(self.current_position, (x, y))
+                    self.add_to_map((x, y), self.current_position)
+                threshold += self.EDGE_LENGTH
+                step += 1
 
-        if -0.1 < self.orientation < 0.1:
-            dirs = [("front", 0, 1), ("back", 0, -1), ("left", -1, 0), ("right", 1, 0)]
-        elif 1.47 < self.orientation < 1.67:
-            dirs = [("front", -1, 0), ("back", 1, 0), ("left", 0, -1), ("right", 0, 1)]
-        elif -1.67 < self.orientation < -1.47:
-            dirs = [("front", 1, 0), ("back", -1, 0), ("left", 0, 1), ("right", 0, -1)]
-        else:
-            dirs = [("front", 0, -1), ("back", 0, 1), ("left", 1, 0), ("right", -1, 0)]
-
-        for name, dx, dy in dirs:
-            dist = lidar_readings[name]
-            if dist < 0.45:
-                continue
-            steps = int(dist // 0.625)
-            for i in range(1, steps + 1):
-                nx, ny = x + dx * i, y + dy * i
-                self.traversable_cells.add((nx, ny))
-                self.unmapped_cells.add((nx, ny))
-                if i == 1:
-                    self.add_to_map((x, y), (nx, ny))
-                    self.add_to_map((nx, ny), (x, y))
-
-        self.mapped_cells.add((x, y))
-        self.unmapped_cells.discard((x, y))
+        # current position has been mapped
+        self.mapped_cells.add(self.current_position)
 
     def add_to_map(self, from_cell, to_cell):
         """Add a new map entry."""
@@ -269,9 +285,15 @@ class Robot:
         Use the robot's sensors to collect data about its environment.
         This method updates internal state variables based on sensor readings.
         """
-        self.orientation = self.get_orientation()
-        self.pos = self.robot.get_current_position()
+        self.orientation = self.robot.get_orientation()
         self.lidar = self.robot.get_lidar_range_list()
+        self.current_position = self.robot.get_current_position()
+
+        if self.lidar:
+            self.front = self.lidar[480]
+            self.back = self.lidar[150]
+            self.right = self.lidar[1]
+            self.left = self.lidar[320]
 
     def plan(self) -> None:
         """Plan the robot's actions.
@@ -279,7 +301,7 @@ class Robot:
         Process the data collected during sensing and decide the next course
         of action for the robot.
         """
-        if self.lidar is not None and self.pos not in self.mapped_cells:
+        if self.lidar is not None and self.current_position not in self.mapped_cells:
             self.map_cell()
 
     def act(self) -> None:
