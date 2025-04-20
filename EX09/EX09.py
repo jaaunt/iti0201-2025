@@ -63,11 +63,11 @@ class Robot:
 
         dx, dy = directions[direction]  # get the direction coordinates based on which way it is
 
-        for c in range(1, cell + 1):
-            coordinates = (x + dx * c, y + dy * c)
+        for cell in range(1, cell + 1):
+            coordinates = (x + dx * cell, y + dy * cell)
 
             # for the first step link it to the robots current position
-            if c == 1:
+            if cell == 1:
                 self.map.setdefault(self.current_position, []).append(coordinates)
                 self.map.setdefault(coordinates, []).append(self.current_position)
 
@@ -110,8 +110,8 @@ class Robot:
                 "right": "down",
             }
         elif abs(abs(orientation) - math.pi) < 0.1:  # facing south
-            # cant just be pi since -pi and pi are the same for python
-            # this gets activated if it wasnt one of the earlier directions
+            # anything thats wasnt the earlier, probably south
+            # abs so it works for negative values too
             direction_map = {
                 "front": "down",
                 "back": "up",
