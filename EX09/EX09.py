@@ -134,12 +134,19 @@ class Robot:
                 span = self.lidar[left_bound + 640:] + self.lidar[:right_bound + 640]
             else:
                 span = self.lidar[left_bound:right_bound]
-            span = [i for i in span if not math.isinf(i)]
-            span = find_wall(span)
-            if not span:
-                directional_lidar.append(0)
+            MAX_INF_STEPS = 2
+            MAX_INF_DISTANCE = MAX_INF_STEPS * self.EDGE_LENGTH
+
+            cleaned_span = [v for v in span if not math.isinf(v)]
+
+            if not cleaned_span:
+                directional_lidar.append(MAX_INF_DISTANCE)
             else:
-                directional_lidar.append(max(span))
+                wall_span = find_wall(cleaned_span)
+                if not wall_span:
+                    directional_lidar.append(0)
+                else:
+                    directional_lidar.append(max(wall_span))
         return directional_lidar
 
     def map_cell(self):
