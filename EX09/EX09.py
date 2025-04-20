@@ -116,30 +116,30 @@ class Robot:
     def get_directional_lidar(self):
         """Extract lidar readings for up, left, down, right directions."""
         directional_lidar = []
+        lidar_len = len(self.lidar)
+
+        # arvuta 'up' suuna indeks
         start_angle = self.orientation - math.pi / 2
         if start_angle < 0:
             start_angle += 2 * math.pi
         diff = 2 * math.pi - start_angle
-        up_index = -int(diff / self.LIDAR_STEP)  # base index for "up" direction
+        up_index = int(diff / self.LIDAR_STEP) % lidar_len
 
         for i in range(4):
-            index = (up_index - 160 * i) % 640
-            left_bound = (index - self.BOUND) % 640
-            right_bound = (index + self.BOUND) % 640
+            index = (up_index + i * (lidar_len // 4)) % lidar_len
+            left_bound = (index - self.BOUND) % lidar_len
+            right_bound = (index + self.BOUND) % lidar_len
 
-            # handle wrap-around
-            if left_bound > right_bound:
-                span = self.lidar[left_bound:] + self.lidar[:right_bound]
-            else:
+            if left_bound < right_bound:
                 span = self.lidar[left_bound:right_bound]
+            else:
+                # wrap around
+                span = self.lidar[left_bound:] + self.lidar[:right_bound]
 
-            # handle infinite values, so no errors come hopefully
-            MAX_INF_STEPS = 2
-            MAX_INF_DISTANCE = MAX_INF_STEPS * self.EDGE_LENGTH
-            cleaned_span = [v for v in span if not math.isinf(v)]
+            cleaned_span = [d for d in span if not math.isinf(d)]
 
             if not cleaned_span:
-                directional_lidar.append(MAX_INF_DISTANCE)
+                directional_lidar.append(2 * self.EDGE_LENGTH)  # safe default if no walls seen
             else:
                 wall_span = find_wall(cleaned_span)
                 directional_lidar.append(max(wall_span) if wall_span else 0)
