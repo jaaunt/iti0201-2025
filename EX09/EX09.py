@@ -81,25 +81,25 @@ class Robot:
         # this is neccecary since the robot isnt always facing the same directuion
         # so up down left right direction finding should take that into consideration
         # case where the robot is facing north
-        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
-        # if the distance is more than 0.45 theres probably an open cell in that direction
-        if self.front > 0.45:
+        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
+        # if the distance is more than 0.5 theres probably an open cell in that direction
+        if self.front > 0.5:
             self.add_cells(int(self.front // 0.625), "up")
-        if self.back > 0.45:
+        if self.back > 0.5:
             self.add_cells(int(self.back // 0.625), "down")
-        if self.right > 0.45:
+        if self.right > 0.5:
             self.add_cells(int(self.right // 0.625), "right")
-        if self.left > 0.45:
+        if self.left > 0.5:
             self.add_cells(int(self.left // 0.625), "left")
 
     def facing_west(self):
         """Map surroundings assuming robot is facing west (π/2 rad)."""
         # case where the robot is facing west
-        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
-        # if the distance is more than 0.45 theres probably an open cell in that direction
-        if self.front > 0.45:
+        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
+        # if the distance is more than 0.5 theres probably an open cell in that direction
+        if self.front > 0.5:
             self.add_cells(int(self.front // 0.625), "left")
-        if self.back > 0.45:
+        if self.back > 0.5:
             self.add_cells(int(self.back // 0.625), "right")
         if self.right > 0.45:
             self.add_cells(int(self.right // 0.625), "up")
@@ -109,29 +109,29 @@ class Robot:
     def facing_east(self):
         """Map surroundings assuming robot is facing east (-π/2 rad)."""
         # case where the robot is facing east
-        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
-        # if the distance is more than 0.45 theres probably an open cell in that direction
-        if self.front > 0.45:
+        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
+        # if the distance is more than 0.5 theres probably an open cell in that direction
+        if self.front > 0.5:
             self.add_cells(int(self.front // 0.625), "right")
-        if self.back > 0.45:
+        if self.back > 0.5:
             self.add_cells(int(self.back // 0.625), "left")
-        if self.right > 0.45:
+        if self.right > 0.5:
             self.add_cells(int(self.right // 0.625), "down")
-        if self.left > 0.45:
+        if self.left > 0.5:
             self.add_cells(int(self.left // 0.625), "up")
 
     def facing_south(self):
         """Map surroundings assuming robot is facing south (π rad)."""
         # case where the robot is facing south
-        # only map if LIDAR sees more than 0.45 meters in that direction, for all of them
-        # if the distance is more than 0.45 theres probably an open cell in that direction
-        if self.front > 0.45:
+        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
+        # if the distance is more than 0.5 theres probably an open cell in that direction
+        if self.front > 0.5:
             self.add_cells(int(self.front // 0.625), "down")
-        if self.back > 0.45:
+        if self.back > 0.5:
             self.add_cells(int(self.back // 0.625), "up")
-        if self.right > 0.45:
+        if self.right > 0.5:
             self.add_cells(int(self.right // 0.625), "left")
-        if self.left > 0.45:
+        if self.left > 0.5:
             self.add_cells(int(self.left // 0.625), "right")
 
     def mapping(self):
