@@ -175,7 +175,7 @@ class Robot:
         return self.frontier
 
     def find_frontier(self):
-        """Find the closest unmapped cell and compute a path using A* algorithm."""
+        """Select the nearest unmapped cell, frontier, and plan a path to it."""
         if not self.unmapped_cells:  # if it isnt an unmapped cell dont do anything
             return
 
@@ -198,7 +198,7 @@ class Robot:
             self.unmapped_cells.remove(closest_cell)
 
     def a_star(self, start, goal):
-        """A* pathfinding algorithm using Manhattan distance heuristic."""
+        """Compute the shortest path from start to goal using the A* algorithm."""
         frontier = PriorityQueue()
         frontier.put((0, start))  # start from current position
         came_from = {start: None}  # track how we reached each cell
@@ -231,7 +231,7 @@ class Robot:
             return []
 
         path = []  # store path here
-        current = goal # start going back from the goal cell
+        current = goal  # start going back from the goal cell
         # keep going backwards through came_from map until we reach the starting cell
         while current is not None:
             path.append(current)
@@ -249,7 +249,7 @@ class Robot:
         """
         if self.lidar:  # if theres lidar data start mapping
             self.mapping()
-        self.find_frontier() # find the next frontier
+        self.find_frontier()  # find the next frontier
 
     def act(self) -> None:
         """Execute planned actions.
