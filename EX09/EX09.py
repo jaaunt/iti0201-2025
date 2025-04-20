@@ -78,36 +78,38 @@ class Robot:
 
     def mapping(self):
         """Map the environment based on current orientation and LIDAR readings."""
-        orientation = self.orientation
-        lidar_distances = {
+        orientation = self.orientation  # robots current orientation
+        lidar_distances = {  # lidar readings for each direction of the robot
             "front": self.front,
             "back": self.back,
             "left": self.left,
             "right": self.right,
         }
 
-        if -0.1 < orientation < 0.1:  # facing North
+        # when the robot is going around where ud down left right is changes
+        # consider robots position and where its looking to decide where the maps up would be to the robot
+        if -0.1 < orientation < 0.1:  # facing north
             direction_map = {
                 "front": "up",
                 "back": "down",
                 "left": "left",
                 "right": "right",
             }
-        elif 1.47 < orientation < 1.67:  # facing West
+        elif 1.47 < orientation < 1.67:  # facing west
             direction_map = {
                 "front": "left",
                 "back": "right",
                 "left": "down",
                 "right": "up",
             }
-        elif -1.67 < orientation < -1.47:  # facing East
+        elif -1.67 < orientation < -1.47:  # facing east
             direction_map = {
                 "front": "right",
                 "back": "left",
                 "left": "up",
                 "right": "down",
             }
-        elif orientation > (math.pi - 0.1) or orientation < (-math.pi + 0.1):  # facing South
+        elif (-math.pi + 0.1) > orientation > (math.pi - 0.1):  # facing south
             direction_map = {
                 "front": "down",
                 "back": "up",
@@ -115,12 +117,12 @@ class Robot:
                 "right": "left",
             }
         else:
-            return  # orientation unknown or unexpected, maybe robot fell over
+            return  # catch any orientation related errors, just dont map when it isnt one of the valid ones
 
-        for raw_direction, mapped_direction in direction_map.items():
-            distance = lidar_distances[raw_direction]
-            if distance > 0.5:
-                num_cells = int(distance // 0.625)
+        for raw_direction, mapped_direction in direction_map.items():  # raw robots direction mapped what it is for the map
+            distance = lidar_distances[raw_direction]  # get the lidar distance in that direction
+            if distance > 0.5:  # if its bigger than 0.5 theres probably enough space for it to be a cell
+                num_cells = int(distance // 0.625)  # how many cells in that direction
                 self.add_cells(num_cells, mapped_direction)
 
     def get_frontier_and_path(self) -> list:
