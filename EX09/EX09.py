@@ -116,33 +116,45 @@ class Robot:
     def get_directional_lidar(self):
         """Extract lidar readings for up, left, down, right directions."""
         directional_lidar = []
-        lidar_len = len(self.lidar)
 
-        # arvuta 'up' suuna indeks
+        # LIDAR vaate algusnurk (kus list algab) on 90° paremale pööratud
         start_angle = self.orientation - math.pi / 2
         if start_angle < 0:
             start_angle += 2 * math.pi
         diff = 2 * math.pi - start_angle
-        up_index = int(diff / self.LIDAR_STEP) % lidar_len
+        up_index = -int(diff / self.LIDAR_STEP)
 
-        for i in range(4):
-            index = (up_index + i * (lidar_len // 4)) % lidar_len
-            left_bound = (index - self.BOUND) % lidar_len
-            right_bound = (index + self.BOUND) % lidar_len
+        for i in range(4):  # 0: up, 1: left, 2: down, 3: right
+            index = up_index - 160 * i
+            if index < -640:
+                index += 640
 
-            if left_bound < right_bound:
-                span = self.lidar[left_bound:right_bound]
-            else:
-                # wrap around
+            # Arvuta indeksivahemikud LIDAR listis
+            left_bound = max(index - self.BOUND, -640)
+            right_bound = min(index + self.BOUND, 640)
+
+            # Võta vastav lõik LIDAR andmetest, tegeledes ümber keeramisega kui vaja
+            if right_bound > 0:
                 span = self.lidar[left_bound:] + self.lidar[:right_bound]
-
-            cleaned_span = [d for d in span if not math.isinf(d)]
-
-            if not cleaned_span:
-                directional_lidar.append(2 * self.EDGE_LENGTH)  # safe default if no walls seen
+            elif left_bound < -640:
+                span = self.lidar[left_bound + 640:] + self.lidar[:right_bound + 640]
             else:
-                wall_span = find_wall(cleaned_span)
-                directional_lidar.append(max(wall_span) if wall_span else 0)
+                span = self.lidar[left_bound:right_bound]
+
+            # Kontrolli kas kõik väärtused on inf (st võib eeldada, et täiesti tühi suund)
+            if all(math.isinf(val) for val in span):
+                directional_lidar.append(float("inf"))  # tähistame et tühi
+                continue
+
+            # Kui osaliselt kehtivad väärtused, eemalda ainult inf-id
+            span = [val for val in span if not math.isinf(val)]
+
+            # Kasuta seina leidmise loogikat (find_wall funktsioon)
+            span = find_wall(span)
+            if not span:
+                directional_lidar.append(0)
+            else:
+                directional_lidar.append(max(span))
 
         return directional_lidar
 
