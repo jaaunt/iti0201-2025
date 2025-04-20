@@ -133,7 +133,7 @@ class Robot:
             left = left_bound % 640
             right = right_bound % 640
 
-            # handle wrapping
+            # Handle wrapping
             if left < right:
                 span = self.lidar[left:right]
             else:
