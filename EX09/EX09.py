@@ -73,11 +73,11 @@ class Robot:
 
         dx, dy = directions[direction]  # get the direction coordinates based on which way it is
 
-        for cell in range(1, cell + 1):
-            coordinates = (x + dx * cell, y + dy * cell)
+        for step in range(1, cell + 1):
+            coordinates = (x + dx * step, y + dy * step)
 
             # for the first step link it to the robots current position
-            if cell == 1:
+            if step == 1:
                 self.map.setdefault(self.current_position, []).append(coordinates)
                 self.map.setdefault(coordinates, []).append(self.current_position)
 
