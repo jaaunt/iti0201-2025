@@ -76,79 +76,52 @@ class Robot:
                 self.traversable_cells.append(coordinates)
                 self.unmapped_cells.append(coordinates)
 
-    def facing_north(self):
-        """Map surroundings assuming robot is facing north (0 rad)."""
-        # this is neccecary since the robot isnt always facing the same directuion
-        # so up down left right direction finding should take that into consideration
-        # case where the robot is facing north
-        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
-        # if the distance is more than 0.5 theres probably an open cell in that direction
-        if self.front > 0.5:
-            self.add_cells(int(self.front // 0.625), "up")
-        if self.back > 0.5:
-            self.add_cells(int(self.back // 0.625), "down")
-        if self.right > 0.5:
-            self.add_cells(int(self.right // 0.625), "right")
-        if self.left > 0.5:
-            self.add_cells(int(self.left // 0.625), "left")
-
-    def facing_west(self):
-        """Map surroundings assuming robot is facing west (π/2 rad)."""
-        # case where the robot is facing west
-        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
-        # if the distance is more than 0.5 theres probably an open cell in that direction
-        if self.front > 0.5:
-            self.add_cells(int(self.front // 0.625), "left")
-        if self.back > 0.5:
-            self.add_cells(int(self.back // 0.625), "right")
-        if self.right > 0.45:
-            self.add_cells(int(self.right // 0.625), "up")
-        if self.left > 0.45:
-            self.add_cells(int(self.left // 0.625), "down")
-
-    def facing_east(self):
-        """Map surroundings assuming robot is facing east (-π/2 rad)."""
-        # case where the robot is facing east
-        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
-        # if the distance is more than 0.5 theres probably an open cell in that direction
-        if self.front > 0.5:
-            self.add_cells(int(self.front // 0.625), "right")
-            # how many free cells are in that direction, every 0.625 is one. // since there cant be a half cell
-        if self.back > 0.5:
-            self.add_cells(int(self.back // 0.625), "left")
-        if self.right > 0.5:
-            self.add_cells(int(self.right // 0.625), "down")
-        if self.left > 0.5:
-            self.add_cells(int(self.left // 0.625), "up")
-
-    def facing_south(self):
-        """Map surroundings assuming robot is facing south (π rad)."""
-        # case where the robot is facing south
-        # only map if LIDAR sees more than 0.5 meters in that direction, for all of them
-        # if the distance is more than 0.5 theres probably an open cell in that direction
-        if self.front > 0.5:
-            self.add_cells(int(self.front // 0.625), "down")
-        if self.back > 0.5:
-            self.add_cells(int(self.back // 0.625), "up")
-        if self.right > 0.5:
-            self.add_cells(int(self.right // 0.625), "left")
-        if self.left > 0.5:
-            self.add_cells(int(self.left // 0.625), "right")
-
     def mapping(self):
-        """Determine orientation and map based on direction the robot is facing."""
-        # facing close to 0 radians=north
-        if -0.1 < self.orientation < 0.1:
-            self.facing_north()
-        # facing close to pi/2 radians=west
-        elif 1.47 < self.orientation < 1.67:
-            self.facing_west()
-        # facing close to -pi/2 radians=east
-        elif -1.67 < self.orientation < -1.47:
-            self.facing_east()
-        # facing close to + or - pi radians=south
-        elif self.orientation > (math.pi - 0.1) or self.orientation < (-math.pi + 0.1):
-            self.facing_south()
+        """Map the environment based on current orientation and LIDAR readings."""
+        orientation = self.orientation
+        lidar_distances = {
+            "front": self.front,
+            "back": self.back,
+            "left": self.left,
+            "right": self.right,
+        }
+
+        if -0.1 < orientation < 0.1:  # facing North
+            direction_map = {
+                "front": "up",
+                "back": "down",
+                "left": "left",
+                "right": "right",
+            }
+        elif 1.47 < orientation < 1.67:  # facing West
+            direction_map = {
+                "front": "left",
+                "back": "right",
+                "left": "down",
+                "right": "up",
+            }
+        elif -1.67 < orientation < -1.47:  # facing East
+            direction_map = {
+                "front": "right",
+                "back": "left",
+                "left": "up",
+                "right": "down",
+            }
+        elif orientation > (math.pi - 0.1) or orientation < (-math.pi + 0.1):  # facing South
+            direction_map = {
+                "front": "down",
+                "back": "up",
+                "left": "right",
+                "right": "left",
+            }
+        else:
+            return  # orientation unknown or unexpected, maybe robot fell over
+
+        for raw_direction, mapped_direction in direction_map.items():
+            distance = lidar_distances[raw_direction]
+            if distance > 0.5:
+                num_cells = int(distance // 0.625)
+                self.add_cells(num_cells, mapped_direction)
 
     def get_frontier_and_path(self) -> list:
         """Identify next frontier for exploration and calculate the path to reach it.
