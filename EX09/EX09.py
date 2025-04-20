@@ -109,7 +109,7 @@ class Robot:
                 "left": "up",
                 "right": "down",
             }
-        elif (-math.pi + 0.1) > orientation > (math.pi - 0.1):  # facing south
+        elif orientation > (math.pi - 0.1) or orientation < (-math.pi + 0.1):  # facing south
             direction_map = {
                 "front": "down",
                 "back": "up",
