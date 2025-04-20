@@ -113,6 +113,7 @@ class Robot:
         # if the distance is more than 0.5 theres probably an open cell in that direction
         if self.front > 0.5:
             self.add_cells(int(self.front // 0.625), "right")
+            # how many free cells are in that direction, every 0.625 is one. // since there cant be a half cell
         if self.back > 0.5:
             self.add_cells(int(self.back // 0.625), "left")
         if self.right > 0.5:
