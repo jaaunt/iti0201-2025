@@ -41,9 +41,9 @@ class Robot:
         self.orientation_goal = 0
 
     def handle_state(self):
-        """Change the robot's state if needed (left wall-following)."""
+        """Left-wall following logic."""
 
-        # Stop check — täiendatud versioon
+        # Peatume kui tühjas kohas
         if all(ir < 15 for ir in self.ir) and max(self.ir) - min(self.ir) < 1.0:
             if not self.stop_check:
                 self.stop_check = True
@@ -52,8 +52,13 @@ class Robot:
                 self.state = "stop"
             return
 
-        # VASAKULE pööramine kui võimalik
-        if self.ir[0] < 100:
+        # IR indeksid: [0 = vasak, ..., 3 = ees, ..., 6 = parem]
+        left = self.ir[0]
+        center = self.ir[3]
+        right = self.ir[6]
+
+        # 1. Kui vasakul on tühi → pööra vasakule
+        if left < 100:
             self.state = "turn"
             self.turn_direction = "left"
             self.orientation_goal = self.orientation + math.pi / 2
@@ -61,17 +66,26 @@ class Robot:
                 self.orientation_goal -= 2 * math.pi
             return
 
-        # Kui ees on vaba, sõida edasi
-        if self.ir_center < 100:
+        # 2. Kui ees on vaba → sõida edasi
+        if center < 100:
             self.state = "drive"
             return
 
-        # Kui vasak ja ees on kinni, pööra paremale
+        # 3. Kui parem on vaba → pööra paremale
+        if right < 100:
+            self.state = "turn"
+            self.turn_direction = "right"
+            self.orientation_goal = self.orientation - math.pi / 2
+            if self.orientation_goal < 0:
+                self.orientation_goal += 2 * math.pi
+            return
+
+        # 4. Kui kõik suunad on kinni → 180 kraadi pööre (ükskõik kummale poole)
         self.state = "turn"
-        self.turn_direction = "right"
-        self.orientation_goal = self.orientation - math.pi / 2
-        if self.orientation_goal < 0:
-            self.orientation_goal += 2 * math.pi
+        self.turn_direction = "left"
+        self.orientation_goal = self.orientation + math.pi
+        if self.orientation_goal > 2 * math.pi:
+            self.orientation_goal -= 2 * math.pi
 
     def get_orientation(self):
         """Tune the orientation."""
