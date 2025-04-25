@@ -1,212 +1,200 @@
-"""M1."""
 import math
 
-
 class Robot:
-    """Turtlebot robot."""
-
-    def __init__(self, robot: object) -> None:
-        """Class initializer.
-
-        Args:
-            robot (object): An instance of a Turtlebot-like robot interface.
-        """
+    def __init__(self, robot):
         self.robot = robot
+
+        # Navigation state
         self.state = "drive"
-        self.turn_direction = "left"
-        self.stop_check = False
-        self.ticks_check = 0
-        # speed variables
+        self.turn_direction = None
+        self.orientation = "N"
+        self.position = (0, 0)
+        self.visited = {(0, 0)}
+        self.path_stack = []
+        self.backtrack_target = None
+
+        # Define end/goal cell here (as per purple X in your image)
+        self.goal_position = (4, -3)  # <-- UPDATE this if needed
+
+        # IR sensors
+        self.ir = []
+        self.ir_center = 0
+
+        # PID motor control
+        self.setpointL = 0
+        self.setpointR = 0
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
-        self.setpointL = 0
-        self.setpointR = 0  # Desired rotational speed in ticks per second
-        self.dt = 0.001
-        self.LeftTicks = [0, 0]  # index 0 on eelmise tsükli omad, index 1 on selle tsükli omad
+        self.limit = 0.05
+
+        self.LeftTicks = [0, 0]
         self.RightTicks = [0, 0]
-        self.RightSpeed = 0
         self.LeftSpeed = 0
-        self.time_memory = [0, 0]
+        self.RightSpeed = 0
         self.previous_error_left = 0
         self.previous_error_right = 0
         self.error_sum_left = 0
         self.error_sum_right = 0
-        self.driveCount = 0
-        self.limit = 0.05
-        # sensor variables
-        self.ir = []
-        self.ir_center = 0
-        self.orientation = 0
-        self.orientation_goal = 0
+        self.time_memory = [0, 0]
+        self.dt = 0.01
 
-    def handle_state(self):
-        """Change the robot's state if needed."""
-        # if robot is driving forward and approaching a wall, then it's time to turn
-        if self.state == "drive" and self.ir_center > 100:
-            self.state = "turn"
-            if self.ir[0] <= self.ir[6]:  # if left infrared sensor shows smaller value than right sensor turn left
-                self.turn_direction = "left"
-                self.orientation_goal = self.orientation + math.pi / 2
-
-                if self.orientation_goal > 2 * math.pi:
-                    self.orientation_goal -= 2 * math.pi
-            else:
-                self.turn_direction = "right"
-                self.orientation_goal = self.orientation - math.pi / 2
-
-                if self.orientation_goal < 0:
-                    self.orientation_goal += 2 * math.pi
-
-        # if the robot has turned 90 degrees to one side, it can start driving forward again
-        if self.state == "turn" and self.reached_orientation():
-            self.state = "drive"
-            self.stop_check = False
-
-        # if all sensors show far, then robot has exited the maze and can stop
-        if all(ir < 15 for ir in self.ir):
-            if not self.stop_check:
-                self.stop_check = True
-                self.ticks_check = self.RightTicks[1] + 1000
-            elif self.RightTicks[1] > self.ticks_check:
-                self.state = "stop"
-
-    def get_orientation(self):
-        """Tune the orientation."""
-        orientation = self.robot.get_orientation()
-        if orientation < 0:
-            orientation += 2 * math.pi
-        return orientation
-
-    def reached_orientation(self):
-        """Check if robot has reached its orientation goal."""
-        if self.turn_direction == "left" and self.orientation > self.orientation_goal and self.orientation - self.orientation_goal <= 0.01:
-            return True
-        elif self.turn_direction == "right" and self.orientation < self.orientation_goal and self.orientation_goal - self.orientation <= 0.01:
-            return True
-        else:
-            return False
-
-    def update_wheel_speedL(self):
-        """Update wheel speed using PID control."""
-        setpoint = self.setpointL
-        speed = self.LeftSpeed
-        error = setpoint - speed
-        self.error_sum_left += error * self.dt
-        error_diff = (error - self.previous_error_left) / self.dt if self.dt > 0 else 0
-        u = self.kp * error + self.ki * self.error_sum_left + self.kd * error_diff
-        self.previous_error_left = error
-        u = max(min(u, self.limit), -self.limit)
-        return u
-
-    def update_wheel_speedR(self):
-        """Update wheel speed using PID control."""
-        setpoint = self.setpointR
-        speed = self.RightSpeed
-        error = setpoint - speed
-        self.error_sum_right += error * self.dt
-        error_diff = (error - self.previous_error_right) / self.dt if self.dt > 0 else 0
-        u = self.kp * error + self.ki * self.error_sum_right + self.kd * error_diff
-        self.previous_error_right = error
-        u = max(min(u, self.limit), -self.limit)
-        return u
-
-    def drive_to_target(self):
-        """Drive the robot straight towards the target."""
-        self.setpointL = 5
-        self.setpointR = 5
-        self.limit = 0.05
-
-    def turn(self):
-        """Turn the robot to the side."""
-        self.limit = 0.1
-        if self.turn_direction == "left":
-            self.setpointL = -1
-            self.setpointR = 1
-        else:
-            self.setpointL = 1
-            self.setpointR = -1
-
-    def stop(self):
-        """Stop the robot."""
-        self.setpointL = -10 if self.LeftSpeed > 0 else 0
-        self.setpointR = -10 if self.RightSpeed > 0 else 0
-        self.limit = 0.05
-        if self.LeftSpeed < 0.01 and self.RightSpeed < 0.01:
-            self.driveCount += 1
-            self.setpointL = 0
-            self.setpointR = 0
-            self.limit = 0.05
+    def sense(self):
+        self.ir = self.robot.get_ir_intensities_list()
+        self.ir_center = self.ir[3]
+        self.track_speed()
 
     def track_speed(self):
-        """Track speed."""
         self.LeftTicks[0] = self.LeftTicks[1]
         self.RightTicks[0] = self.RightTicks[1]
-
         self.LeftTicks[1] = self.robot.get_left_motor_encoder_ticks()
         self.RightTicks[1] = self.robot.get_right_motor_encoder_ticks()
-
         self.time_memory[0] = self.time_memory[1]
         self.time_memory[1] = self.robot.get_time()
         self.dt = self.time_memory[1] - self.time_memory[0]
-
-        if self.dt != 0:
+        if self.dt > 0:
             self.LeftSpeed = (self.LeftTicks[1] - self.LeftTicks[0]) * (2 * math.pi / 508.8) / self.dt
             self.RightSpeed = (self.RightTicks[1] - self.RightTicks[0]) * (2 * math.pi / 508.8) / self.dt
         else:
-            self.LeftSpeed = 0
-            self.RightSpeed = 0
-            self.dt = 0.01
+            self.LeftSpeed = self.RightSpeed = 0
 
-    def sense(self) -> None:
-        """Gather sensor data.
+    def plan(self):
+        # Stop if at goal and all sensors show clear
+        if self.position == self.goal_position and all(ir < 15 for ir in self.ir):
+            self.state = "stop"
+            return
 
-        Use the robot's sensors to collect data about its environment.
-        This method updates internal state variables based on sensor readings.
-        """
-        self.track_speed()
+        if self.state == "drive":
+            if self.ir_center > 100:
+                self.decide_turn()
+                self.state = "turn"
+            else:
+                self.move_forward()
+        elif self.state == "turn":
+            self.move_forward()  # update position after turn
+            self.state = "drive"
+        elif self.state == "backtrack":
+            self.handle_backtrack()
 
-        self.ir = self.robot.get_ir_intensities_list()
-        self.ir_center = self.ir[3]
-        self.orientation = self.get_orientation()
+    def decide_turn(self):
+        left = self.ir[0]
+        right = self.ir[6]
 
-        print("LIST:", self.ir)
-        print("TICKS:", self.RightTicks)
-        # print("CENTER:", self.ir_center)
-        print("ORIENTATION:", self.orientation)
-        print("STATE:", self.state)
+        left_cell = self.get_new_cell("L")
+        right_cell = self.get_new_cell("R")
 
-    def plan(self) -> None:
-        """Plan the robot's actions.
-
-        Process the data collected during sensing and decide the next course
-        of action for the robot.
-        """
-        self.handle_state()
-
-        if self.state == "turn":
-            self.turn()
-        elif self.state == "drive":
-            self.drive_to_target()
+        if left < 100 and left_cell not in self.visited:
+            self.turn_direction = "left"
+            self.update_orientation("L")
+        elif right < 100 and right_cell not in self.visited:
+            self.turn_direction = "right"
+            self.update_orientation("R")
         else:
-            self.stop()
+            # Backtrack needed
+            self.state = "backtrack"
+            if self.path_stack:
+                self.backtrack_target = self.path_stack.pop()
+                self.set_orientation_toward(self.backtrack_target)
+            else:
+                self.state = "stop"  # nothing else to do
 
-    def act(self) -> None:
-        """Execute planned actions.
+    def handle_backtrack(self):
+        if self.backtrack_target:
+            self.position = self.backtrack_target
+            self.backtrack_target = None
+            self.state = "drive"
 
-        Perform the actions decided in the planning step, such as moving or
-        interacting with the environment.
-        """
-        left_torque = self.update_wheel_speedL()
-        right_torque = self.update_wheel_speedR()
-        self.robot.set_left_motor_torque(left_torque)
-        self.robot.set_right_motor_torque(right_torque)
+    def get_new_cell(self, turn):
+        x, y = self.position
+        ori = self.orientation
+        dir_map = {
+            ("N", "L"): (x - 1, y),
+            ("N", "R"): (x + 1, y),
+            ("E", "L"): (x, y + 1),
+            ("E", "R"): (x, y - 1),
+            ("S", "L"): (x + 1, y),
+            ("S", "R"): (x - 1, y),
+            ("W", "L"): (x, y - 1),
+            ("W", "R"): (x, y + 1),
+        }
+        return dir_map[(ori, turn)]
 
-    def spin(self) -> None:
-        """Spin the robot.
+    def set_orientation_toward(self, target):
+        x, y = self.position
+        tx, ty = target
+        dx = tx - x
+        dy = ty - y
+        if dx == 1:
+            self.orientation = "E"
+        elif dx == -1:
+            self.orientation = "W"
+        elif dy == 1:
+            self.orientation = "N"
+        elif dy == -1:
+            self.orientation = "S"
 
-        This is the main loop where the robot performs its sense-plan-act cycle.
-        """
+    def update_orientation(self, turn):
+        dirs = ["N", "E", "S", "W"]
+        idx = dirs.index(self.orientation)
+        if turn == "L":
+            self.orientation = dirs[(idx - 1) % 4]
+        else:
+            self.orientation = dirs[(idx + 1) % 4]
+
+    def move_forward(self):
+        x, y = self.position
+        if self.orientation == "N":
+            new_pos = (x, y + 1)
+        elif self.orientation == "E":
+            new_pos = (x + 1, y)
+        elif self.orientation == "S":
+            new_pos = (x, y - 1)
+        else:  # "W"
+            new_pos = (x - 1, y)
+
+        if new_pos not in self.visited:
+            self.path_stack.append(self.position)
+            self.visited.add(new_pos)
+        self.position = new_pos  # Always update position
+
+    def act(self):
+        if self.state == "drive":
+            self.setpointL = 5
+            self.setpointR = 5
+        elif self.state == "turn":
+            self.setpointL = -1 if self.turn_direction == "left" else 1
+            self.setpointR = 1 if self.turn_direction == "left" else -1
+        else:  # stop or backtrack
+            self.setpointL = 0
+            self.setpointR = 0
+
+        torqueL = self.update_pid("L")
+        torqueR = self.update_pid("R")
+        self.robot.set_left_motor_torque(torqueL)
+        self.robot.set_right_motor_torque(torqueR)
+
+    def update_pid(self, side):
+        if side == "L":
+            setpoint, speed, prev_err, err_sum = self.setpointL, self.LeftSpeed, self.previous_error_left, self.error_sum_left
+        else:
+            setpoint, speed, prev_err, err_sum = self.setpointR, self.RightSpeed, self.previous_error_right, self.error_sum_right
+
+        error = setpoint - speed
+        err_sum += error * self.dt
+        d_error = (error - prev_err) / self.dt if self.dt > 0 else 0
+        u = self.kp * error + self.ki * err_sum + self.kd * d_error
+        u = max(min(u, self.limit), -self.limit)
+
+        if side == "L":
+            self.previous_error_left = error
+            self.error_sum_left = err_sum
+        else:
+            self.previous_error_right = error
+            self.error_sum_right = err_sum
+
+        return u
+
+    def spin(self):
         self.sense()
         self.plan()
         self.act()
