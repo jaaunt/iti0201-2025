@@ -13,14 +13,14 @@ class Robot:
         self.path_stack = []
         self.backtrack_target = None
 
-        # Define end/goal cell here (as per purple X in your image)
-        self.goal_position = (4, -3)  # <-- UPDATE this if needed
+        # Define end goal (UPDATE if needed)
+        self.goal_position = (4, -3)  # ← VAJADUSEL MUUDA!
 
-        # IR sensors
+        # IR sensor values
         self.ir = []
         self.ir_center = 0
 
-        # PID motor control
+        # PID motor setup
         self.setpointL = 0
         self.setpointR = 0
         self.kp = 0.1
@@ -59,44 +59,56 @@ class Robot:
             self.LeftSpeed = self.RightSpeed = 0
 
     def plan(self):
-        # Stop if at goal and all sensors show clear
+        # Stop if at goal and IR says open
         if self.position == self.goal_position and all(ir < 15 for ir in self.ir):
             self.state = "stop"
             return
 
         if self.state == "drive":
-            if self.ir_center > 100:
-                self.decide_turn()
-                self.state = "turn"
-            else:
-                self.move_forward()
+            self.move_forward()
         elif self.state == "turn":
-            self.move_forward()  # update position after turn
-            self.state = "drive"
+            self.decide_turn()
         elif self.state == "backtrack":
             self.handle_backtrack()
 
-    def decide_turn(self):
-        left = self.ir[0]
-        right = self.ir[6]
+    def move_forward(self):
+        x, y = self.position
+        if self.orientation == "N":
+            new_pos = (x, y + 1)
+        elif self.orientation == "E":
+            new_pos = (x + 1, y)
+        elif self.orientation == "S":
+            new_pos = (x, y - 1)
+        else:  # "W"
+            new_pos = (x - 1, y)
 
-        left_cell = self.get_new_cell("L")
-        right_cell = self.get_new_cell("R")
-
-        if left < 100 and left_cell not in self.visited:
-            self.turn_direction = "left"
-            self.update_orientation("L")
-        elif right < 100 and right_cell not in self.visited:
-            self.turn_direction = "right"
-            self.update_orientation("R")
-        else:
-            # Backtrack needed
-            self.state = "backtrack"
-            if self.path_stack:
-                self.backtrack_target = self.path_stack.pop()
-                self.set_orientation_toward(self.backtrack_target)
+        # If wall ahead or visited, transition to turn or backtrack
+        if self.ir_center > 100 or new_pos in self.visited:
+            # Try left or right
+            if self.ir[0] < 100 and self.get_new_cell("L") not in self.visited:
+                self.turn_direction = "left"
+                self.update_orientation("L")
+                self.state = "turn"
+            elif self.ir[6] < 100 and self.get_new_cell("R") not in self.visited:
+                self.turn_direction = "right"
+                self.update_orientation("R")
+                self.state = "turn"
             else:
-                self.state = "stop"  # nothing else to do
+                self.state = "backtrack"
+                if self.path_stack:
+                    self.backtrack_target = self.path_stack.pop()
+                    self.set_orientation_toward(self.backtrack_target)
+                else:
+                    self.state = "stop"
+            return
+
+        # Move forward
+        self.path_stack.append(self.position)
+        self.visited.add(new_pos)
+        self.position = new_pos
+
+    def decide_turn(self):
+        self.state = "drive"
 
     def handle_backtrack(self):
         if self.backtrack_target:
@@ -140,22 +152,6 @@ class Robot:
             self.orientation = dirs[(idx - 1) % 4]
         else:
             self.orientation = dirs[(idx + 1) % 4]
-
-    def move_forward(self):
-        x, y = self.position
-        if self.orientation == "N":
-            new_pos = (x, y + 1)
-        elif self.orientation == "E":
-            new_pos = (x + 1, y)
-        elif self.orientation == "S":
-            new_pos = (x, y - 1)
-        else:  # "W"
-            new_pos = (x - 1, y)
-
-        if new_pos not in self.visited:
-            self.path_stack.append(self.position)
-            self.visited.add(new_pos)
-        self.position = new_pos  # Always update position
 
     def act(self):
         if self.state == "drive":
