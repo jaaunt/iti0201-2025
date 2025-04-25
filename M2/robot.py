@@ -64,7 +64,7 @@ class Robot:
             self.stop_check = False
 
         # if all sensors show far, then robot has exited the maze and can stop
-        if all(ir < 15 for ir in self.ir):
+        if all(ir < 15 for ir in self.ir) and max(self.ir) - min(self.ir) < 1.0:
             if not self.stop_check:
                 self.stop_check = True
                 self.ticks_check = self.RightTicks[1] + 1000
