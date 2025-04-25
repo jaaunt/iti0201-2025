@@ -41,35 +41,37 @@ class Robot:
         self.orientation_goal = 0
 
     def handle_state(self):
-        """Change the robot's state if needed."""
-        # if robot is driving forward and approaching a wall, then it's time to turn
-        if self.state == "drive" and self.ir_center > 100:
-            self.state = "turn"
-            if self.ir[0] <= self.ir[6]:  # if left infrared sensor shows smaller value than right sensor turn left
-                self.turn_direction = "left"
-                self.orientation_goal = self.orientation + math.pi / 2
+        """Change the robot's state if needed (left wall-following)."""
 
-                if self.orientation_goal > 2 * math.pi:
-                    self.orientation_goal -= 2 * math.pi
-            else:
-                self.turn_direction = "right"
-                self.orientation_goal = self.orientation - math.pi / 2
-
-                if self.orientation_goal < 0:
-                    self.orientation_goal += 2 * math.pi
-
-        # if the robot has turned 90 degrees to one side, it can start driving forward again
-        if self.state == "turn" and self.reached_orientation():
-            self.state = "drive"
-            self.stop_check = False
-
-        # if all sensors show far, then robot has exited the maze and can stop
-        if all(ir < 10 for ir in self.ir):
+        # Stop check — täiendatud versioon
+        if all(ir < 15 for ir in self.ir) and max(self.ir) - min(self.ir) < 1.0:
             if not self.stop_check:
                 self.stop_check = True
                 self.ticks_check = self.RightTicks[1] + 1000
             elif self.RightTicks[1] > self.ticks_check:
                 self.state = "stop"
+            return
+
+        # VASAKULE pööramine kui võimalik
+        if self.ir[0] < 100:
+            self.state = "turn"
+            self.turn_direction = "left"
+            self.orientation_goal = self.orientation + math.pi / 2
+            if self.orientation_goal > 2 * math.pi:
+                self.orientation_goal -= 2 * math.pi
+            return
+
+        # Kui ees on vaba, sõida edasi
+        if self.ir_center < 100:
+            self.state = "drive"
+            return
+
+        # Kui vasak ja ees on kinni, pööra paremale
+        self.state = "turn"
+        self.turn_direction = "right"
+        self.orientation_goal = self.orientation - math.pi / 2
+        if self.orientation_goal < 0:
+            self.orientation_goal += 2 * math.pi
 
     def get_orientation(self):
         """Tune the orientation."""
