@@ -1,4 +1,3 @@
-"""M2."""
 import math
 
 class Robot:
@@ -22,6 +21,7 @@ class Robot:
         # Avause tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
+        self.after_left_turn = False
 
         # Kiiruse ja PID muutujad
         self.kp = 0.1
@@ -73,7 +73,6 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
-        # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
@@ -87,13 +86,11 @@ class Robot:
 
         if self.state == "drive":
             if self.ir_center > 50:
-                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
             elif not self.left_gap_detected and self.ir_left > 150:
-                # Vasakul avaus tuvastatud
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
@@ -106,12 +103,24 @@ class Robot:
                     self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                     self.left_gap_detected = False
                     self.gap_close_counter = 0
-            else:
-                self.state = "drive"
 
-        elif self.state == "turn_left" or self.state == "turn_right":
+        elif self.state == "turn_left":
             if self.reached_orientation():
                 self.state = "drive"
+                self.after_left_turn = True
+
+        elif self.state == "turn_right":
+            if self.reached_orientation():
+                self.state = "drive"
+
+        if self.after_left_turn and self.ir_left > 150:
+            # Vasakul uuesti auk - kontrollime lidarit
+            lidar_distances = self.robot.get_lidar_distances()
+            close_distances = [d for d in lidar_distances if d < 4.0]  # 4m kaugusel mingi asi
+            if len(close_distances) == 0:
+                print("Oleme valjas!")
+                self.state = "stop"
+            self.after_left_turn = False  # Igaks juhuks nullime pärast
 
     def reached_orientation(self):
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
