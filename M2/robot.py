@@ -56,7 +56,7 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir > 30:
+            if left_ir > 15:
                 # Vasakul on ilus sein -> sõida edasi
                 self.state = "drive"
 
@@ -67,7 +67,7 @@ class Robot:
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_right"
 
-            elif left_ir <= 30:
+            elif left_ir <= 15:
                 # Vasakul on auk -> keera vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
