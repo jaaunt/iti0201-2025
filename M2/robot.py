@@ -56,29 +56,23 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir < wall_threshold:
-                # Vasakul auk → keera vasakule
-                self.turn_direction = "left"
-                self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
-                self.turn_start_time = self.robot.get_time()
-                self.state = "turn_left"
+            if left_ir > 30:
+                # Vasakul on ilus sein -> sõida edasi
+                self.state = "drive"
 
             elif front_ir > 100:
-                # Otse sein → keera paremale
+                # Otse on sein ees -> keera paremale
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_right"
 
-            else:
-                # Vasakul on sein ja ees vaba → sõida edasi
-                self.state = "drive"
-
-        elif self.state == "turn_left" or self.state == "turn_right":
-            current_time = self.robot.get_time()
-            if self.reached_orientation() or (current_time - self.turn_start_time) > 1.5:
-                self.state = "drive"
-                self.stop_check = False
+            elif left_ir <= 30:
+                # Vasakul on auk -> keera vasakule
+                self.turn_direction = "left"
+                self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
+                self.turn_start_time = self.robot.get_time()
+                self.state = "turn_left"
 
     def get_orientation(self):
         orientation = self.robot.get_orientation()
