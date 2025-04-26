@@ -154,9 +154,9 @@ class Robot:
     def sense(self) -> None:
         self.track_speed()
         self.ir = self.robot.get_ir_intensities_list()
-        self.ir_center = self.ir[4]
+        self.ir_center = self.ir[3]
         self.orientation = self.get_orientation()
-        print("center" + self.ir_center)
+        print("center" + str(self.ir_center))
         print(self.state)
 
     def plan(self) -> None:
