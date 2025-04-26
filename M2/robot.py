@@ -67,7 +67,7 @@ class Robot:
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_right"
 
-            elif left_ir < 15:
+            elif left_ir < 10:
                 # Vasakul on auk -> keera vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
