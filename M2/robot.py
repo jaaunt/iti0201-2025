@@ -1,4 +1,6 @@
+"""M2."""
 import math
+import numpy as np
 
 class Robot:
     """Turtlebot robot."""
@@ -12,14 +14,20 @@ class Robot:
         self.turn_start_orientation = 0
         self.orientation_goal = 0
 
+        # Sensorite muutujad
         self.ir = []
         self.ir_left = 0.0
         self.ir_center = 0.0
         self.ir_right = 0.0
 
+        # Avause tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
 
+        # Kas peale vasakpööret peab tegema kaamera kontrolli
+        self.check_camera_after_turn = False
+
+        # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
@@ -38,9 +46,6 @@ class Robot:
         self.error_sum_right = 0
 
         self.orientation = 0
-
-        self.after_exit_drive_counter = 0
-        self.exit_detected = False
 
     def get_orientation(self):
         orientation = self.robot.get_orientation()
@@ -72,39 +77,36 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
+        # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
-    def is_camera_mostly_black(self):
-        image = self.robot.get_rgb_camera_image()
-        black_pixel_count = 0
-        total_pixel_count = len(image)
-
-        for pixel in image:
-            r, g, b = pixel
-            brightness = (r + g + b) / (3 * 255)
-            if brightness < 0.62:
-                black_pixel_count += 1
-
-        if total_pixel_count == 0:
-            return False
-
-        ratio = black_pixel_count / total_pixel_count
-        print(f"Black pixel ratio: {ratio:.2f}")
-        return ratio > 0.6
+    def is_camera_mostly_black(self, threshold=0.62):
+        """Kontrollib kas enamus kaamerapildist on must."""
+        image = self.robot.get_camera_rgb_image()
+        # ignoreerime Alpha channeli
+        rgb_image = image[:, :, :3]
+        # Mustad pikslid: kõik kanalid väiksemad kui 30
+        black_pixels = np.all(rgb_image < 30, axis=2)
+        black_ratio = np.sum(black_pixels) / (rgb_image.shape[0] * rgb_image.shape[1])
+        print(f"[Camera analysis] Black pixel ratio: {black_ratio:.2f}")
+        return black_ratio > threshold
 
     def handle_state(self):
-        if self.exit_detected:
-            self.after_exit_drive_counter += 1
-            if self.after_exit_drive_counter > 100:
-                self.state = "stop"
-            return
-
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
                 self.ticks_check = self.RightTicks[1] + 1000
             elif self.RightTicks[1] > self.ticks_check:
                 self.state = "stop"
+            return
+
+        if self.check_camera_after_turn:
+            # Peatu ja tee kaamerakontroll
+            if self.is_camera_mostly_black():
+                self.state = "stop"
+            else:
+                self.state = "drive"
+            self.check_camera_after_turn = False
             return
 
         if self.state == "drive":
@@ -131,9 +133,8 @@ class Robot:
 
         elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
-                if self.state == "turn_left" and self.is_camera_mostly_black():
-                    self.exit_detected = True
-                    self.after_exit_drive_counter = 0
+                if self.state == "turn_left":
+                    self.check_camera_after_turn = True
                 self.state = "drive"
 
     def reached_orientation(self):
