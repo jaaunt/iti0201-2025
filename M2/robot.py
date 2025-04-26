@@ -74,6 +74,20 @@ class Robot:
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_left"
 
+        elif self.state == "turn_left" or self.state == "turn_right":
+            current_time = self.robot.get_time()
+            time_spent_turning = current_time - self.turn_start_time
+
+            # Lisa kontroll ajale (näiteks 5 sekundit)
+            if time_spent_turning > 5:
+                print("Keeras liiga kaua, läheme tagasi drive!")
+                self.state = "drive"
+                self.stop_check = False
+
+            elif self.reached_orientation():
+                self.state = "drive"
+                self.stop_check = False
+
     def get_orientation(self):
         orientation = self.robot.get_orientation()
         if orientation < 0:
