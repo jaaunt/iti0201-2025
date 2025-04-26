@@ -12,14 +12,21 @@ class Robot:
         self.ticks_check = 0
         self.turn_start_orientation = 0
         self.orientation_goal = 0
+
+        # Sensorite muutujad
         self.ir = []
-        self.ir_center = 0
+        self.ir_left = 0.0
+        self.ir_center = 0.0
+        self.ir_right = 0.0
+
+        # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
         self.setpointL = 0
         self.setpointR = 0
         self.limit = 0.05
+
         self.LeftTicks = [0, 0]
         self.RightTicks = [0, 0]
         self.LeftSpeed = 0
@@ -29,6 +36,7 @@ class Robot:
         self.previous_error_right = 0
         self.error_sum_left = 0
         self.error_sum_right = 0
+
         self.orientation = 0
 
     def get_orientation(self):
@@ -55,18 +63,17 @@ class Robot:
 
     def sense(self) -> None:
         self.track_speed()
-        self.ir_center = self.robot.get_ir_intensity_center()
-        self.ir_left = self.robot.get_ir_intensity_left()
+        self.ir = self.robot.get_ir_intensities_list()
+        self.ir_left = self.ir[0]
+        self.ir_center = self.ir[3]
+        self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
-        print(
-            f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
+        # Trükime kõik vajalikud andmed
+        print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
-        left_ir = self.robot.get_ir_intensity_left()
-        front_ir = self.robot.get_ir_intensity_center()
-
-        if all(ir < 10 for ir in self.ir):  # selle jaoks pead ikka korra ir listi küsima
+        if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
                 self.ticks_check = self.RightTicks[1] + 1000
@@ -75,17 +82,18 @@ class Robot:
             return
 
         if self.state == "drive":
-            if front_ir > 50:
+            if self.ir_center > 50:
+                # Sein ees -> keera paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
-
-            elif left_ir < 100:
+            elif self.ir_left < 10:
+                # Vasakul auk -> keera vasakule
                 self.state = "turn_left"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
-
             else:
+                # Vasakul on sein ja ees vaba
                 self.state = "drive"
 
         elif self.state == "turn_left" or self.state == "turn_right":
@@ -94,7 +102,7 @@ class Robot:
 
     def reached_orientation(self):
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
-        return abs(angle_error) < math.radians(5)  # lubame väikse 5 kraadise vea
+        return abs(angle_error) < math.radians(5)
 
     def plan(self) -> None:
         self.handle_state()
@@ -141,8 +149,8 @@ class Robot:
         setpoint = self.setpointR
         speed = self.RightSpeed
         error = setpoint - speed
-        self.error_sum_right += error * self.dt
-        error_diff = (error - self.previous_error_right) / self.dt if self.dt > 0 else 0
+        self.error_sum_right += error * self.dt if self.dt > 0 else 0
+        error_diff = (error - self.previous_error_right) / self.dt
         u = self.kp * error + self.ki * self.error_sum_right + self.kd * error_diff
         self.previous_error_right = error
         return max(min(u, self.limit), -self.limit)
