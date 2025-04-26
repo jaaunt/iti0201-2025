@@ -43,7 +43,7 @@ class Robot:
 
         self.orientation = 0
 
-        self.stop_check_time = 60.0  # Sekundites - muuda kui vaja
+        self.stop_check_time = 80.0  # Sekundites - muuda kui vaja
         self.stopped = False  # Kas oleme juba seisma jäänud
 
     def get_orientation(self):
