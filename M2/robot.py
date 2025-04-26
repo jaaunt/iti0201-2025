@@ -127,7 +127,7 @@ class Robot:
             elif self.left_gap_detected:
                 if self.ir_left < 20:
                     self.gap_close_counter += 1
-                if self.gap_close_counter >= 35:
+                if self.gap_close_counter >= 40:
                     self.state = "turn_left"
                     self.turn_start_orientation = self.orientation
                     self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
