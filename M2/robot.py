@@ -200,6 +200,7 @@ class Robot:
         self.setpointL = 0
         self.setpointR = 0
         self.limit = 0.05
+        print("stop")
 
     def update_wheel_speedL(self):
         setpoint = self.setpointL
