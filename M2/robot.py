@@ -87,7 +87,7 @@ class Robot:
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
-            elif self.ir_left > 100:
+            elif self.ir_left > 150:
                 # Vasakul auk -> keera vasakule
                 self.state = "turn_left"
                 self.turn_start_orientation = self.orientation
