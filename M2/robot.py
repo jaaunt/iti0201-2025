@@ -157,8 +157,6 @@ class Robot:
         self.ir_center = self.ir[3]
         self.orientation = self.get_orientation()
 
-        print(f"IR: {['{:.1f}'.format(x) for x in self.ir]}  STATE: {self.state}")
-
     def plan(self) -> None:
         self.handle_state()
 
