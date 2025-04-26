@@ -50,6 +50,12 @@ class Robot:
 
         self.orientation = 0
 
+    def snap_to_nearest_90(self, angle_rad):
+        angle_deg = math.degrees(angle_rad)
+        snapped_deg = round(angle_deg / 90) * 90
+        snapped_deg = snapped_deg % 360
+        return math.radians(snapped_deg)
+
     def get_orientation(self):
         orientation = self.robot.get_orientation()
         if orientation < 0:
@@ -112,9 +118,9 @@ class Robot:
             if self.ir_center > 50:
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
-                self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
+                self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
 
-            elif not self.left_gap_detected and self.ir_left > 60:
+            elif not self.left_gap_detected and self.ir_left > 50:
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
@@ -124,7 +130,7 @@ class Robot:
                 if self.gap_close_counter >= 35:
                     self.state = "turn_left"
                     self.turn_start_orientation = self.orientation
-                    self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
+                    self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
                     self.left_gap_detected = False
                     self.gap_close_counter = 0
             else:
