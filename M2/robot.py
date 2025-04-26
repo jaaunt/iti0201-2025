@@ -16,11 +16,12 @@ class Robot:
         self.turn_direction = "left"
         self.stop_check = False
         self.ticks_check = 0
+        # speed variables
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
         self.setpointL = 0
-        self.setpointR = 0
+        self.setpointR = 0  # Desired rotational speed in ticks per second
         self.dt = 0.001
         self.LeftTicks = [0, 0]
         self.RightTicks = [0, 0]
@@ -33,6 +34,7 @@ class Robot:
         self.error_sum_right = 0
         self.driveCount = 0
         self.limit = 0.05
+        # sensor variables
         self.ir = []
         self.ir_center = 0
         self.orientation = 0
@@ -43,7 +45,7 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
-        wall_threshold = 10
+        wall_threshold = 20
 
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
@@ -54,14 +56,14 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir > wall_threshold and front_ir > wall_threshold:
-                self.state = "drive"
-            elif left_ir < wall_threshold:
+            if left_ir > wall_threshold:
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_left"
-            elif front_ir <= wall_threshold:
+            elif front_ir < 100:
+                self.state = "drive"
+            else:
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
@@ -80,7 +82,7 @@ class Robot:
         return orientation
 
     def reached_orientation(self):
-        margin = 0.1  # täpsem (~5 kraadi)
+        margin = 0.25
         angle_diff = abs(self.orientation - self.orientation_goal) % (2 * math.pi)
         return angle_diff < margin or angle_diff > (2 * math.pi - margin)
 
