@@ -16,6 +16,7 @@ class Robot:
         self.turn_direction = "left"
         self.stop_check = False
         self.ticks_check = 0
+        self.time_spent_turning = 0
         # speed variables
         self.kp = 0.1
         self.ki = 0.001
@@ -79,7 +80,7 @@ class Robot:
             time_spent_turning = current_time - self.turn_start_time
 
             # Lisa kontroll ajale (näiteks 5 sekundit)
-            if time_spent_turning > 20:
+            if self.time_spent_turning > 20:
                 print("Keeras liiga kaua, läheme tagasi drive!")
                 self.state = "drive"
                 self.stop_check = False
@@ -170,6 +171,13 @@ class Robot:
         self.ir = self.robot.get_ir_intensities_list()
         self.ir_center = self.ir[3]
         self.orientation = self.get_orientation()
+
+        if self.state in ["turn_left", "turn_right"]:
+            current_time = self.robot.get_time()
+            self.time_spent_turning = current_time - self.turn_start_time
+        else:
+            self.time_spent_turning = 0
+
         print("center" + str(self.ir_center))
         print(self.state)
 
