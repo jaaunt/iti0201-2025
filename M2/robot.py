@@ -138,7 +138,7 @@ class Robot:
 
     def reached_orientation(self):
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
-        return abs(angle_error) < math.radians(5)
+        return abs(angle_error) < math.radians(1)
 
     def plan(self) -> None:
         if self.state == "stop" and self.stop_timer_start is not None:
