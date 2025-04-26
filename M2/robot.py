@@ -87,6 +87,9 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
+        print(
+            f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
+
     def is_camera_mostly_black(self, threshold=0.62):
         image = self.robot.get_camera_rgb_image()
         rgb_image = image[:, :, :3]
