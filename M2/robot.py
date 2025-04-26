@@ -92,6 +92,7 @@ class Robot:
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
+
             elif self.left_gap_detected:
                 if self.ir_left < 20:
                     self.gap_close_counter += 1
