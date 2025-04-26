@@ -13,17 +13,14 @@ class Robot:
         self.turn_start_orientation = 0
         self.orientation_goal = 0
 
-        # Sensorite muutujad
         self.ir = []
         self.ir_left = 0.0
         self.ir_center = 0.0
         self.ir_right = 0.0
 
-        # Avause tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
 
-        # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
@@ -65,6 +62,15 @@ class Robot:
             self.RightSpeed = 0
             self.dt = 0.01
 
+    def check_exit_with_lidar(self):
+        lidar = self.robot.get_lidar_distance_list()
+        forward_indices = list(range(270, 360)) + list(range(0, 91))
+        forward_distances = [lidar[i] for i in forward_indices]
+        inf_count = sum(1 for d in forward_distances if math.isinf(d))
+        if inf_count >= (2/3) * len(forward_distances):
+            return True
+        return False
+
     def sense(self) -> None:
         self.track_speed()
         self.ir = self.robot.get_ir_intensities_list()
@@ -73,10 +79,14 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
-        # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
+        if self.all_ir_12():
+            if self.check_exit_with_lidar():
+                self.state = "stop"
+                return
+
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -87,13 +97,11 @@ class Robot:
 
         if self.state == "drive":
             if self.ir_center > 50:
-                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
             elif not self.left_gap_detected and self.ir_left > 150:
-                # Vasakul avaus tuvastatud
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
@@ -112,6 +120,9 @@ class Robot:
         elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
                 self.state = "drive"
+
+    def all_ir_12(self):
+        return all(abs(ir - 12) < 0.5 for ir in self.ir)
 
     def reached_orientation(self):
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
