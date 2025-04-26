@@ -1,3 +1,4 @@
+"""M2."""
 import math
 
 class Robot:
@@ -72,25 +73,10 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
+        # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
-    def check_lidar_exit(self) -> bool:
-        lidar_readings = self.robot.get_lidar_list()
-        # Kontrollime ainult otse ees oleva nurga ümber (näiteks õige vahemik -15 kraadi kuni +15 kraadi)
-        center_indices = list(range(350, 360)) + list(range(0, 10))  # umbes -10° kuni +10°
-        for idx in center_indices:
-            if lidar_readings[idx] < 4.0:  # Kui mingi asi on alla 4 meetri, ei ole veel väljas
-                return False
-        return True
-
     def handle_state(self):
-        # Kui kõik IR on täpselt 12, kontrollime lidarit
-        if all(11.5 <= ir <= 12.5 for ir in self.ir):
-            if self.check_lidar_exit():
-                print("Väljapääs tuvastatud! Peatame roboti.")
-                self.state = "stop"
-                return
-
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -101,11 +87,13 @@ class Robot:
 
         if self.state == "drive":
             if self.ir_center > 50:
+                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
             elif not self.left_gap_detected and self.ir_left > 150:
+                # Vasakul avaus tuvastatud
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
@@ -121,7 +109,7 @@ class Robot:
             else:
                 self.state = "drive"
 
-        elif self.state in ["turn_left", "turn_right"]:
+        elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
                 self.state = "drive"
 
