@@ -63,7 +63,7 @@ class Robot:
             self.dt = 0.01
 
     def check_exit_with_lidar(self):
-        lidar = self.robot.get_lidar_distance_list()
+        lidar = self.robot.get_lidar_range_list()
         forward_indices = list(range(270, 360)) + list(range(0, 91))
         forward_distances = [lidar[i] for i in forward_indices]
         inf_count = sum(1 for d in forward_distances if math.isinf(d))
