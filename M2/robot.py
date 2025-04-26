@@ -114,7 +114,7 @@ class Robot:
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
-            elif not self.left_gap_detected and self.ir_left > 50:
+            elif not self.left_gap_detected and self.ir_left > 70:
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
