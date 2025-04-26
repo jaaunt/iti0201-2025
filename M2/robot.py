@@ -117,14 +117,6 @@ class Robot:
 
     def handle_state(self):
         """Handle the robots different states."""
-        if all(ir < 10 for ir in self.ir):
-            if not self.stop_check:
-                self.stop_check = True
-                self.ticks_check = self.RightTicks[1] + 1000
-            elif self.RightTicks[1] > self.ticks_check:
-                self.state = "stop"
-            return
-
         if self.state == "hard_stop":
             self.stop()
             return
