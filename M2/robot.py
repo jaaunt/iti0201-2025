@@ -57,9 +57,10 @@ class Robot:
         self.track_speed()
         self.ir = self.robot.get_ir_intensities_list()
         self.ir_center = self.ir[3]
+        self.ir_left = self.ir[0]
         self.orientation = self.get_orientation()
 
-        print(f"center={self.ir_center:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
+        print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
         left_ir = self.ir[0]
