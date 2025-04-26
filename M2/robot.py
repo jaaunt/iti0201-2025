@@ -83,7 +83,7 @@ class Robot:
         right_ir = self.ir[6]
 
         # Kas oleme väljas?
-        if all(ir < 15 for ir in self.ir):
+        if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
                 self.ticks_check = self.RightTicks[1] + 1000
