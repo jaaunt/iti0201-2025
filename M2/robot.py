@@ -59,7 +59,7 @@ class Robot:
                 if front_ir < 100:
                     self.state = "drive"  # Vasakul on sein, otse vaba -> edasi
                 else:
-                    # Vasakul ja otse sein -> pööra paremale
+                    # Vasakul ja otse sein --> pööra paremale
                     self.turn_direction = "right"
                     self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                     self.state = "turn"
