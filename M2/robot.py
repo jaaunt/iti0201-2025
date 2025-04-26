@@ -95,13 +95,13 @@ class Robot:
             if left_ir > 100 and front_ir < 100:
                 # Vasakul sein ja otse vaba -> sõida edasi
                 self.state = "drive"
-            elif left_ir < 100:
+            elif left_ir < 10:
                 # Vasakul auk -> pööra vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn"
-            elif front_ir >= 100:
+            elif front_ir >= 10:
                 # Otse ees sein -> pööra paremale
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
