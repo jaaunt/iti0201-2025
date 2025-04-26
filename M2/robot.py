@@ -45,6 +45,7 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
+        # Kas oleme väljas?
         if all(ir < 15 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -54,21 +55,62 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir < 100:
+            if left_ir > 100 and front_ir < 100:
+                # Vasakul sein ja otse vaba -> sõida edasi
+                self.state = "drive"
+            elif left_ir < 100:
+                # Vasakul auk -> pööra vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn"
-            elif front_ir < 100:
-                self.state = "drive"
-            else:
+            elif front_ir >= 100:
+                # Otse ees sein -> pööra paremale
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn"
 
         elif self.state == "turn":
-            if self.reached_orientation() or (self.robot.get_time() - self.turn_start_time) > 2.0:
+            current_time = self.robot.get_time()
+            if self.reached_orientation() or (current_time - self.turn_start_time) > 1.5:
+                self.state = "drive"
+                self.stop_check = False
+
+    def handle_state(self):
+        left_ir = self.ir[0]
+        front_ir = self.ir_center
+        right_ir = self.ir[6]
+
+        # Kas oleme väljas?
+        if all(ir < 15 for ir in self.ir):
+            if not self.stop_check:
+                self.stop_check = True
+                self.ticks_check = self.RightTicks[1] + 1000
+            elif self.RightTicks[1] > self.ticks_check:
+                self.state = "stop"
+            return
+
+        if self.state == "drive":
+            if left_ir > 100 and front_ir < 100:
+                # Vasakul sein ja otse vaba -> sõida edasi
+                self.state = "drive"
+            elif left_ir < 100:
+                # Vasakul auk -> pööra vasakule
+                self.turn_direction = "left"
+                self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
+                self.turn_start_time = self.robot.get_time()
+                self.state = "turn"
+            elif front_ir >= 100:
+                # Otse ees sein -> pööra paremale
+                self.turn_direction = "right"
+                self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
+                self.turn_start_time = self.robot.get_time()
+                self.state = "turn"
+
+        elif self.state == "turn":
+            current_time = self.robot.get_time()
+            if self.reached_orientation() or (current_time - self.turn_start_time) > 1.5:
                 self.state = "drive"
                 self.stop_check = False
 
