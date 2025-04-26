@@ -23,7 +23,7 @@ class Robot:
         self.setpointL = 0
         self.setpointR = 0  # Desired rotational speed in ticks per second
         self.dt = 0.001
-        self.LeftTicks = [0, 0]  # index 0 on eelmise tsükli omad, index 1 on selle tsükli omad
+        self.LeftTicks = [0, 0]
         self.RightTicks = [0, 0]
         self.RightSpeed = 0
         self.LeftSpeed = 0
@@ -45,44 +45,8 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
-        # Kas oleme väljas?
-        if all(ir < 15 for ir in self.ir):
-            if not self.stop_check:
-                self.stop_check = True
-                self.ticks_check = self.RightTicks[1] + 1000
-            elif self.RightTicks[1] > self.ticks_check:
-                self.state = "stop"
-            return
+        wall_threshold = 50
 
-        if self.state == "drive":
-            if left_ir > 100 and front_ir < 100:
-                # Vasakul sein ja otse vaba -> sõida edasi
-                self.state = "drive"
-            elif left_ir < 100:
-                # Vasakul auk -> pööra vasakule
-                self.turn_direction = "left"
-                self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
-                self.turn_start_time = self.robot.get_time()
-                self.state = "turn"
-            elif front_ir >= 100:
-                # Otse ees sein -> pööra paremale
-                self.turn_direction = "right"
-                self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
-                self.turn_start_time = self.robot.get_time()
-                self.state = "turn"
-
-        elif self.state == "turn":
-            current_time = self.robot.get_time()
-            if self.reached_orientation() or (current_time - self.turn_start_time) > 1.5:
-                self.state = "drive"
-                self.stop_check = False
-
-    def handle_state(self):
-        left_ir = self.ir[0]
-        front_ir = self.ir_center
-        right_ir = self.ir[6]
-
-        # Kas oleme väljas?
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -92,42 +56,37 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir > 10 and front_ir > 10:
-                # Vasakul sein ja otse vaba -> sõida edasi
-                self.state = "drive"
-            elif left_ir < 10:
-                # Vasakul auk -> pööra vasakule
+            if left_ir > wall_threshold:
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
-                self.state = "turn"
-            elif front_ir >= 10:
-                # Otse ees sein -> pööra paremale
+                self.state = "turn_left"
+            elif front_ir < 100:
+                self.state = "drive"
+            else:
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
-                self.state = "turn"
+                self.state = "turn_right"
 
-        elif self.state == "turn":
+        elif self.state == "turn_left" or self.state == "turn_right":
             current_time = self.robot.get_time()
             if self.reached_orientation() or (current_time - self.turn_start_time) > 1.5:
                 self.state = "drive"
                 self.stop_check = False
 
     def get_orientation(self):
-        """Tune the orientation."""
         orientation = self.robot.get_orientation()
         if orientation < 0:
             orientation += 2 * math.pi
         return orientation
 
     def reached_orientation(self):
-        margin = 0.25  # umbes 14 kraadi lubatud
+        margin = 0.25
         angle_diff = abs(self.orientation - self.orientation_goal) % (2 * math.pi)
         return angle_diff < margin or angle_diff > (2 * math.pi - margin)
 
     def update_wheel_speedL(self):
-        """Update wheel speed using PID control."""
         setpoint = self.setpointL
         speed = self.LeftSpeed
         error = setpoint - speed
@@ -139,7 +98,6 @@ class Robot:
         return u
 
     def update_wheel_speedR(self):
-        """Update wheel speed using PID control."""
         setpoint = self.setpointR
         speed = self.RightSpeed
         error = setpoint - speed
@@ -151,23 +109,21 @@ class Robot:
         return u
 
     def drive_to_target(self):
-        """Drive the robot straight towards the target."""
         self.setpointL = 5
         self.setpointR = 5
         self.limit = 0.05
 
-    def turn(self):
-        """Turn the robot to the side."""
+    def turn_left(self):
         self.limit = 0.1
-        if self.turn_direction == "left":
-            self.setpointL = -1
-            self.setpointR = 1
-        else:
-            self.setpointL = 1
-            self.setpointR = -1
+        self.setpointL = -1
+        self.setpointR = 1
+
+    def turn_right(self):
+        self.limit = 0.1
+        self.setpointL = 1
+        self.setpointR = -1
 
     def stop(self):
-        """Stop the robot."""
         self.setpointL = -10 if self.LeftSpeed > 0 else 0
         self.setpointR = -10 if self.RightSpeed > 0 else 0
         self.limit = 0.05
@@ -178,7 +134,6 @@ class Robot:
             self.limit = 0.05
 
     def track_speed(self):
-        """Track speed."""
         self.LeftTicks[0] = self.LeftTicks[1]
         self.RightTicks[0] = self.RightTicks[1]
 
@@ -198,54 +153,30 @@ class Robot:
             self.dt = 0.01
 
     def sense(self) -> None:
-        """Gather sensor data.
-
-        Use the robot's sensors to collect data about its environment.
-        This method updates internal state variables based on sensor readings.
-        """
         self.track_speed()
-
         self.ir = self.robot.get_ir_intensities_list()
         self.ir_center = self.ir[3]
         self.orientation = self.get_orientation()
 
-        print("LIST:", self.ir)
-        print("TICKS:", self.RightTicks)
-        # print("CENTER:", self.ir_center)
-        print("ORIENTATION:", self.orientation)
-        print("STATE:", self.state)
-
     def plan(self) -> None:
-        """Plan the robot's actions.
-
-        Process the data collected during sensing and decide the next course
-        of action for the robot.
-        """
         self.handle_state()
 
-        if self.state == "turn":
-            self.turn()
+        if self.state == "turn_left":
+            self.turn_left()
+        elif self.state == "turn_right":
+            self.turn_right()
         elif self.state == "drive":
             self.drive_to_target()
         else:
             self.stop()
 
     def act(self) -> None:
-        """Execute planned actions.
-
-        Perform the actions decided in the planning step, such as moving or
-        interacting with the environment.
-        """
         left_torque = self.update_wheel_speedL()
         right_torque = self.update_wheel_speedR()
         self.robot.set_left_motor_torque(left_torque)
         self.robot.set_right_motor_torque(right_torque)
 
     def spin(self) -> None:
-        """Spin the robot.
-
-        This is the main loop where the robot performs its sense-plan-act cycle.
-        """
         self.sense()
         self.plan()
         self.act()
