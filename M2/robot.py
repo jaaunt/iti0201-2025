@@ -1,10 +1,17 @@
+"""M2."""
 import math
 import numpy as np
+
 
 class Robot:
     """Turtlebot robot."""
 
     def __init__(self, robot: object) -> None:
+        """Class initializer.
+
+        Args:
+            robot (object): An instance of a Turtlebot-like robot interface.
+        """
         self.robot = robot
         self.state = "drive"
         self.turn_direction = "left"
@@ -81,6 +88,11 @@ class Robot:
             self.dt = 0.01
 
     def sense(self) -> None:
+        """Gather sensor data.
+
+        Use the robot's sensors to collect data about its environment.
+        This method updates internal state variables based on sensor readings.
+        """
         self.track_speed()
         self.ir = self.robot.get_ir_intensities_list()
         self.ir_left = self.ir[0]
@@ -174,6 +186,11 @@ class Robot:
         return abs(angle_error) < math.radians(1)
 
     def plan(self) -> None:
+        """Plan the robot's actions.
+
+        Process the data collected during sensing and decide the next course
+        of action for the robot.
+        """
         if self.state == "stop" and self.stop_timer_start is not None:
             elapsed = self.robot.get_time() - self.stop_timer_start
             if elapsed < self.stop_drive_duration:
@@ -238,12 +255,21 @@ class Robot:
         return max(min(u, self.limit), -self.limit)
 
     def act(self) -> None:
+        """Execute planned actions.
+
+        Perform the actions decided in the planning step, such as moving or
+        interacting with the environment.
+        """
         left_torque = self.update_wheel_speedL()
         right_torque = self.update_wheel_speedR()
         self.robot.set_left_motor_torque(left_torque)
         self.robot.set_right_motor_torque(right_torque)
 
     def spin(self) -> None:
+        """Spin the robot.
+
+        This is the main loop where the robot performs its sense-plan-act cycle.
+        """
         self.sense()
         self.plan()
         self.act()
