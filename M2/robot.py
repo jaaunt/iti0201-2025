@@ -79,7 +79,7 @@ class Robot:
             time_spent_turning = current_time - self.turn_start_time
 
             # Lisa kontroll ajale (näiteks 5 sekundit)
-            if time_spent_turning > 5:
+            if time_spent_turning > 20:
                 print("Keeras liiga kaua, läheme tagasi drive!")
                 self.state = "drive"
                 self.stop_check = False
