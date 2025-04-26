@@ -60,7 +60,7 @@ class Robot:
                 # Vasakul on ilus sein -> sõida edasi
                 self.state = "drive"
 
-            elif front_ir > 100:
+            elif front_ir > 50:
                 # Otse on sein ees -> keera paremale
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
