@@ -6,26 +6,32 @@ class Robot:
 
     def __init__(self, robot: object) -> None:
         self.robot = robot
-        self.state = "align_orientation"
+        self.state = "drive"
         self.turn_direction = "left"
         self.stop_check = False
         self.ticks_check = 0
         self.turn_start_orientation = 0
         self.orientation_goal = 0
 
+        # Sensorite muutujad
         self.ir = []
         self.ir_left = 0.0
         self.ir_center = 0.0
         self.ir_right = 0.0
 
+        # Avause ja loopi tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
         self.left_turn_counter = 0
 
+        # Kas peale vasakpööret peab tegema kaamera kontrolli
         self.check_camera_after_turn = False
-        self.stop_timer_start = None
-        self.stop_drive_duration = 2.5
 
+        # Stop timer
+        self.stop_timer_start = None
+        self.stop_drive_duration = 2.5  # sek
+
+        # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
@@ -80,7 +86,9 @@ class Robot:
         self.ir_center = self.ir[3]
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
-        print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
+
+        print(
+            f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def is_camera_mostly_black(self, threshold=0.62):
         image = self.robot.get_camera_rgb_image()
@@ -91,11 +99,6 @@ class Robot:
         return black_ratio > threshold
 
     def handle_state(self):
-        if self.state == "align_orientation":
-            self.turn_start_orientation = self.orientation
-            self.orientation_goal = self.snap_to_nearest_90(self.orientation)
-            return
-
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -115,13 +118,11 @@ class Robot:
 
         if self.state == "drive":
             if self.ir_center > 50:
-                print("[Decision] Wall ahead -> turning right.")
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
 
             elif not self.left_gap_detected and self.ir_left > 50:
-                print("[Detection] Left gap detected!")
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
@@ -130,9 +131,8 @@ class Robot:
                     self.gap_close_counter += 1
                 if self.gap_close_counter >= 40:
                     if self.left_turn_counter >= 6:
-                        print("[Loop protection] 6 left turns reached, driving straight!")
+                        # loop detected -> ignore left turn, drive straight
                         if self.ir_center < 50:
-                            print("[Wall ahead after loop protection] Turning right.")
                             self.state = "turn_right"
                             self.turn_start_orientation = self.orientation
                             self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
@@ -140,7 +140,6 @@ class Robot:
                         else:
                             self.state = "drive"
                     else:
-                        print("[Decision] Turning left at gap.")
                         self.state = "turn_left"
                         self.turn_start_orientation = self.orientation
                         self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
@@ -162,26 +161,8 @@ class Robot:
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
         return abs(angle_error) < math.radians(1)
 
-    def turn_in_place(self, angle_direction):
-        speed = 0.5
-        if angle_direction == 1:
-            self.setpointL = speed
-            self.setpointR = -speed
-        else:
-            self.setpointL = -speed
-            self.setpointR = speed
-        self.limit = 0.05
-
     def plan(self) -> None:
-        if self.state == "align_orientation":
-            angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
-            if abs(angle_error) < math.radians(1):
-                print("[Initial alignment] Done, switching to drive.")
-                self.state = "drive"
-            else:
-                direction = -1 if angle_error < 0 else 1
-                self.turn_in_place(direction)
-        elif self.state == "stop" and self.stop_timer_start is not None:
+        if self.state == "stop" and self.stop_timer_start is not None:
             elapsed = self.robot.get_time() - self.stop_timer_start
             if elapsed < self.stop_drive_duration:
                 self.drive_to_target()
@@ -207,11 +188,13 @@ class Robot:
         self.setpointL = -1
         self.setpointR = 1
         self.limit = 0.1
+        print("turn left")
 
     def turn_right(self):
         self.setpointL = 1
         self.setpointR = -1
         self.limit = 0.1
+        print("turn right")
 
     def stop(self):
         self.setpointL = 0
