@@ -1,5 +1,6 @@
 """M2."""
 import math
+import numpy as np
 
 class Robot:
     """Turtlebot robot."""
@@ -22,6 +23,9 @@ class Robot:
         # Avause tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
+
+        # Kas peale vasakpööret peab tegema kaamera kontrolli
+        self.check_camera_after_turn = False
 
         # Kiiruse ja PID muutujad
         self.kp = 0.1
@@ -76,6 +80,17 @@ class Robot:
         # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
+    def is_camera_mostly_black(self, threshold=0.7):
+        """Kontrollib kas enamus kaamerapildist on must."""
+        image = self.robot.get_camera_rgb_image()
+        # ignoreerime Alpha channeli
+        rgb_image = image[:, :, :3]
+        # Mustad pikslid: kõik kanalid väiksemad kui 30
+        black_pixels = np.all(rgb_image < 30, axis=2)
+        black_ratio = np.sum(black_pixels) / (rgb_image.shape[0] * rgb_image.shape[1])
+        print(f"[Camera analysis] Black pixel ratio: {black_ratio:.2f}")
+        return black_ratio > threshold
+
     def handle_state(self):
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
@@ -85,15 +100,22 @@ class Robot:
                 self.state = "stop"
             return
 
+        if self.check_camera_after_turn:
+            # Peatu ja tee kaamerakontroll
+            if self.is_camera_mostly_black():
+                self.state = "stop"
+            else:
+                self.state = "drive"
+            self.check_camera_after_turn = False
+            return
+
         if self.state == "drive":
             if self.ir_center > 50:
-                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
             elif not self.left_gap_detected and self.ir_left > 150:
-                # Vasakul avaus tuvastatud
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
 
@@ -111,6 +133,8 @@ class Robot:
 
         elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
+                if self.state == "turn_left":
+                    self.check_camera_after_turn = True
                 self.state = "drive"
 
     def reached_orientation(self):
