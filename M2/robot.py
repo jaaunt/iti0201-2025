@@ -45,7 +45,6 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
-        # Kontrolli, kas oleme väljas
         if all(ir < 15 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -56,21 +55,20 @@ class Robot:
 
         if self.state == "drive":
             if left_ir < 100:
-                # Vasakul on vaba -> pööra vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
+                self.turn_start_time = self.robot.get_time()
                 self.state = "turn"
             elif front_ir < 100:
-                # Vasakul on sein, otse vaba -> sõida otse edasi
                 self.state = "drive"
             else:
-                # Otse ees on sein -> pööra paremale
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
+                self.turn_start_time = self.robot.get_time()
                 self.state = "turn"
 
         elif self.state == "turn":
-            if self.reached_orientation():
+            if self.reached_orientation() or (self.robot.get_time() - self.turn_start_time) > 2.0:
                 self.state = "drive"
                 self.stop_check = False
 
@@ -82,7 +80,7 @@ class Robot:
         return orientation
 
     def reached_orientation(self):
-        margin = 0.15  # umbes 8-9 kraadi, natuke vabam kui enne
+        margin = 0.25  # umbes 14 kraadi lubatud
         angle_diff = abs(self.orientation - self.orientation_goal) % (2 * math.pi)
         return angle_diff < margin or angle_diff > (2 * math.pi - margin)
 
