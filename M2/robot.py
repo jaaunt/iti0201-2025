@@ -82,14 +82,8 @@ class Robot:
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
-            elif left_ir < 10:
+            elif left_ir < 100:
                 # Vasakul auk -> pööra vasakule
-                self.state = "turn_left"
-                self.turn_start_orientation = self.orientation
-                self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
-
-            elif left_ir > 200:
-                # Vasakul väga suur vaba ruum -> keera vasakule
                 self.state = "turn_left"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
