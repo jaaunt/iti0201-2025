@@ -13,22 +13,25 @@ class Robot:
         self.turn_start_orientation = 0
         self.orientation_goal = 0
 
-        # Sensorid
+        # Sensorite muutujad
         self.ir = []
         self.ir_left = 0.0
         self.ir_center = 0.0
         self.ir_right = 0.0
 
-        # Avause ja loopi tuvastus
+        # Avause ja loopi tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
         self.left_turn_counter = 0
 
-        # Kaamera pildid enne ja parast
-        self.before_turn_black = False
+        # Kas peale vasakpööret peab tegema kaamera kontrolli
         self.check_camera_after_turn = False
 
-        # Kiirus ja PID
+        # Stop timer
+        self.stop_timer_start = None
+        self.stop_drive_duration = 2.5  # sek
+
+        # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
@@ -50,7 +53,8 @@ class Robot:
 
     def snap_to_nearest_90(self, angle_rad):
         angle_deg = math.degrees(angle_rad)
-        snapped_deg = round(angle_deg / 90) * 90 % 360
+        snapped_deg = round(angle_deg / 90) * 90
+        snapped_deg = snapped_deg % 360
         return math.radians(snapped_deg)
 
     def get_orientation(self):
@@ -83,7 +87,8 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
-        print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}")
+        print(
+            f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def is_camera_mostly_black(self, threshold=0.62):
         image = self.robot.get_camera_rgb_image()
@@ -95,17 +100,19 @@ class Robot:
 
     def handle_state(self):
         if all(ir < 10 for ir in self.ir):
-            self.state = "stop"
+            if not self.stop_check:
+                self.stop_check = True
+                self.ticks_check = self.RightTicks[1] + 1000
+            elif self.RightTicks[1] > self.ticks_check:
+                self.state = "stop"
             return
 
         if self.check_camera_after_turn:
-            after_turn_black = self.is_camera_mostly_black()
-            if self.before_turn_black and after_turn_black:
-                print("[Result] Before and After images black -> Immediate STOP!")
+            if self.is_camera_mostly_black():
                 self.state = "stop"
-            elif after_turn_black:
-                print("[Result] Only after turn black -> drive a little then stop.")
                 self.stop_timer_start = self.robot.get_time()
+            else:
+                self.state = "drive"
             self.check_camera_after_turn = False
             return
 
@@ -124,6 +131,7 @@ class Robot:
                     self.gap_close_counter += 1
                 if self.gap_close_counter >= 40:
                     if self.left_turn_counter >= 6:
+                        # loop detected -> ignore left turn, drive straight
                         if self.ir_center < 50:
                             self.state = "turn_right"
                             self.turn_start_orientation = self.orientation
@@ -132,13 +140,14 @@ class Robot:
                         else:
                             self.state = "drive"
                     else:
-                        self.before_turn_black = self.is_camera_mostly_black()
                         self.state = "turn_left"
                         self.turn_start_orientation = self.orientation
                         self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
                         self.left_turn_counter += 1
                     self.left_gap_detected = False
                     self.gap_close_counter = 0
+            else:
+                self.state = "drive"
 
         elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
@@ -153,9 +162,9 @@ class Robot:
         return abs(angle_error) < math.radians(1)
 
     def plan(self) -> None:
-        if self.stop_timer_start is not None:
+        if self.state == "stop" and self.stop_timer_start is not None:
             elapsed = self.robot.get_time() - self.stop_timer_start
-            if elapsed < 2.5:
+            if elapsed < self.stop_drive_duration:
                 self.drive_to_target()
             else:
                 self.stop()
