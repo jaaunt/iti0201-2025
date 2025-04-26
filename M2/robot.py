@@ -8,26 +8,20 @@ class Robot:
         self.robot = robot
         self.state = "drive"
         self.turn_direction = "left"
-        self.stop_check = False
-        self.ticks_check = 0
         self.turn_start_orientation = 0
         self.orientation_goal = 0
 
-        # Sensorite muutujad
+        # Sensorid
         self.ir = []
         self.ir_left = 0.0
         self.ir_center = 0.0
         self.ir_right = 0.0
 
-        # Avause tuvastamise muutujad
+        # Avause tuvastamine
         self.left_gap_detected = False
         self.gap_close_counter = 0
 
-        # Stop timer
-        self.stop_timer_start = None
-        self.stop_drive_duration = 2.5  # sek
-
-        # Kiiruse ja PID muutujad
+        # Kiirus ja PID
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
@@ -49,31 +43,22 @@ class Robot:
 
     def snap_to_nearest_90(self, angle_rad):
         angle_deg = math.degrees(angle_rad)
-        snapped_deg = round(angle_deg / 90) * 90
-        snapped_deg = snapped_deg % 360
+        snapped_deg = round(angle_deg / 90) * 90 % 360
         return math.radians(snapped_deg)
 
     def get_orientation(self):
         orientation = self.robot.get_orientation()
-        if orientation < 0:
-            orientation += 2 * math.pi
-        return orientation
+        return orientation if orientation >= 0 else orientation + 2 * math.pi
 
     def track_speed(self):
-        self.LeftTicks[0] = self.LeftTicks[1]
-        self.RightTicks[0] = self.RightTicks[1]
+        self.LeftTicks[0], self.RightTicks[0] = self.LeftTicks[1], self.RightTicks[1]
         self.LeftTicks[1] = self.robot.get_left_motor_encoder_ticks()
         self.RightTicks[1] = self.robot.get_right_motor_encoder_ticks()
-        self.time_memory[0] = self.time_memory[1]
-        self.time_memory[1] = self.robot.get_time()
-        self.dt = self.time_memory[1] - self.time_memory[0]
-        if self.dt != 0:
-            self.LeftSpeed = (self.LeftTicks[1] - self.LeftTicks[0]) * (2 * math.pi / 508.8) / self.dt
-            self.RightSpeed = (self.RightTicks[1] - self.RightTicks[0]) * (2 * math.pi / 508.8) / self.dt
-        else:
-            self.LeftSpeed = 0
-            self.RightSpeed = 0
-            self.dt = 0.01
+        self.time_memory[0], self.time_memory[1] = self.time_memory[1], self.robot.get_time()
+        self.dt = max(self.time_memory[1] - self.time_memory[0], 0.01)
+
+        self.LeftSpeed = (self.LeftTicks[1] - self.LeftTicks[0]) * (2 * math.pi / 508.8) / self.dt
+        self.RightSpeed = (self.RightTicks[1] - self.RightTicks[0]) * (2 * math.pi / 508.8) / self.dt
 
     def sense(self) -> None:
         self.track_speed()
@@ -94,12 +79,12 @@ class Robot:
         return black_ratio > threshold
 
     def handle_state(self):
+        if self.state == "stop":
+            return
+
         if all(ir < 10 for ir in self.ir):
-            if not self.stop_check:
-                self.stop_check = True
-                self.ticks_check = self.RightTicks[1] + 1000
-            elif self.RightTicks[1] > self.ticks_check:
-                self.state = "stop"
+            self.state = "stop"
+            self.stop()
             return
 
         if self.state == "drive":
@@ -116,18 +101,17 @@ class Robot:
                 if self.ir_left < 20:
                     self.gap_close_counter += 1
                 if self.gap_close_counter >= 40:
-                    # Enne vasakule keeramist kontrollime kaamerapilti
+                    # ENNE kui vasakule pöörame, kontrollime kaamerat
                     if self.is_camera_mostly_black():
                         self.state = "stop"
-                        self.stop_timer_start = self.robot.get_time()
+                        self.stop()
+                        return
                     else:
                         self.state = "turn_left"
                         self.turn_start_orientation = self.orientation
                         self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
                     self.left_gap_detected = False
                     self.gap_close_counter = 0
-            else:
-                self.state = "drive"
 
         elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
@@ -138,22 +122,15 @@ class Robot:
         return abs(angle_error) < math.radians(1)
 
     def plan(self) -> None:
-        if self.state == "stop" and self.stop_timer_start is not None:
-            elapsed = self.robot.get_time() - self.stop_timer_start
-            if elapsed < self.stop_drive_duration:
-                self.drive_to_target()
-            else:
-                self.stop()
+        self.handle_state()
+        if self.state == "drive":
+            self.drive_to_target()
+        elif self.state == "turn_left":
+            self.turn_left()
+        elif self.state == "turn_right":
+            self.turn_right()
         else:
-            self.handle_state()
-            if self.state == "drive":
-                self.drive_to_target()
-            elif self.state == "turn_left":
-                self.turn_left()
-            elif self.state == "turn_right":
-                self.turn_right()
-            else:
-                self.stop()
+            self.stop()
 
     def drive_to_target(self):
         self.setpointL = 5
@@ -176,23 +153,19 @@ class Robot:
         self.limit = 0.05
 
     def update_wheel_speedL(self):
-        setpoint = self.setpointL
-        speed = self.LeftSpeed
-        error = setpoint - speed
+        error = self.setpointL - self.LeftSpeed
         self.error_sum_left += error * self.dt
-        error_diff = (error - self.previous_error_left) / self.dt if self.dt > 0 else 0
-        u = self.kp * error + self.ki * self.error_sum_left + self.kd * error_diff
+        error_diff = (error - self.previous_error_left) / self.dt
         self.previous_error_left = error
+        u = self.kp * error + self.ki * self.error_sum_left + self.kd * error_diff
         return max(min(u, self.limit), -self.limit)
 
     def update_wheel_speedR(self):
-        setpoint = self.setpointR
-        speed = self.RightSpeed
-        error = setpoint - speed
-        self.error_sum_right += error * self.dt if self.dt > 0 else 0
+        error = self.setpointR - self.RightSpeed
+        self.error_sum_right += error * self.dt
         error_diff = (error - self.previous_error_right) / self.dt
-        u = self.kp * error + self.ki * self.error_sum_right + self.kd * error_diff
         self.previous_error_right = error
+        u = self.kp * error + self.ki * self.error_sum_right + self.kd * error_diff
         return max(min(u, self.limit), -self.limit)
 
     def act(self) -> None:
