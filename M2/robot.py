@@ -156,6 +156,7 @@ class Robot:
         self.ir = self.robot.get_ir_intensities_list()
         self.ir_center = self.ir[3]
         self.orientation = self.get_orientation()
+        print(self.state)
 
     def plan(self) -> None:
         self.handle_state()
