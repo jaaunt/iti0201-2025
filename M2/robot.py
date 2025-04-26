@@ -43,7 +43,7 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
-        wall_threshold = 15  # tõstetud 10 -> 15
+        wall_threshold = 25
 
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
