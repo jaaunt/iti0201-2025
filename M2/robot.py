@@ -45,7 +45,7 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
-        wall_threshold = 50
+        wall_threshold = 15  # mitte 50, 15 on parem IR-de jaoks
 
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
@@ -56,18 +56,23 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir > wall_threshold:
+            if left_ir < wall_threshold:
+                # Vasakul auk → keera vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_left"
-            elif front_ir < 100:
-                self.state = "drive"
-            else:
+
+            elif front_ir > 100:
+                # Otse sein → keera paremale
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_right"
+
+            else:
+                # Vasakul on sein ja ees vaba → sõida edasi
+                self.state = "drive"
 
         elif self.state == "turn_left" or self.state == "turn_right":
             current_time = self.robot.get_time()
