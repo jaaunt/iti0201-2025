@@ -6,7 +6,11 @@ class Robot:
     """Turtlebot robot."""
 
     def __init__(self, robot: object) -> None:
-        """Class initializer."""
+        """Class initializer.
+
+        Args:
+            robot (object): An instance of a Turtlebot-like robot interface.
+        """
         self.robot = robot
         self.state = "drive"
         self.turn_direction = "left"
@@ -17,7 +21,7 @@ class Robot:
         self.ki = 0.001
         self.kd = 0.001
         self.setpointL = 0
-        self.setpointR = 0
+        self.setpointR = 0  # Desired rotational speed in ticks per second
         self.dt = 0.001
         self.LeftTicks = [0, 0]
         self.RightTicks = [0, 0]
@@ -41,7 +45,7 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
-        wall_threshold = 15  # IR väärtus seinast eristamiseks
+        wall_threshold = 15  # mitte 50, 15 on parem IR-de jaoks
 
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
@@ -53,27 +57,22 @@ class Robot:
 
         if self.state == "drive":
             if left_ir > 15:
+                # Vasakul on ilus sein -> sõida edasi
                 self.state = "drive"
+
             elif front_ir > 50:
+                # Otse on sein ees -> keera paremale
                 self.turn_direction = "right"
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_right"
+
             elif left_ir < 10:
+                # Vasakul on auk -> keera vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                 self.turn_start_time = self.robot.get_time()
                 self.state = "turn_left"
-
-        elif self.state == "turn_left" or self.state == "turn_right":
-            current_time = self.robot.get_time()
-            # Kui otse on vaba, siis hakka edasi sõitma
-            if front_ir < 50:
-                self.state = "drive"
-                self.stop_check = False
-            elif self.reached_orientation() or (current_time - self.turn_start_time) > 1.5:
-                self.state = "drive"
-                self.stop_check = False
 
     def get_orientation(self):
         orientation = self.robot.get_orientation()
@@ -82,7 +81,7 @@ class Robot:
         return orientation
 
     def reached_orientation(self):
-        margin = 0.25  # lubatud viga (radianides)
+        margin = 0.25
         angle_diff = abs(self.orientation - self.orientation_goal) % (2 * math.pi)
         return angle_diff < margin or angle_diff > (2 * math.pi - margin)
 
@@ -157,8 +156,8 @@ class Robot:
         self.ir = self.robot.get_ir_intensities_list()
         self.ir_center = self.ir[3]
         self.orientation = self.get_orientation()
-        print("IR-sensorid:", self.ir, " | Eesmine sensor:", self.ir_center)
-        print("Seisund:", self.state)
+        print("center" + str(self.ir_center))
+        print(self.state)
 
     def plan(self) -> None:
         self.handle_state()
