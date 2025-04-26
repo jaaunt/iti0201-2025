@@ -1,4 +1,3 @@
-"""M2."""
 import math
 
 class Robot:
@@ -13,17 +12,14 @@ class Robot:
         self.turn_start_orientation = 0
         self.orientation_goal = 0
 
-        # Sensorite muutujad
         self.ir = []
         self.ir_left = 0.0
         self.ir_center = 0.0
         self.ir_right = 0.0
 
-        # Avause tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
 
-        # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
@@ -43,10 +39,8 @@ class Robot:
 
         self.orientation = 0
 
-        # Loppu jaoks
-        self.check_camera_after_turn = False
-        self.final_drive_ticks = 0
-        self.final_drive_distance = 200  # palju edasi soita peale valjast tuvastamist
+        self.after_exit_drive_counter = 0
+        self.exit_detected = False
 
     def get_orientation(self):
         orientation = self.robot.get_orientation()
@@ -81,46 +75,35 @@ class Robot:
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def is_camera_mostly_black(self):
-        image = self.robot.get_camera_image()
-        if image is None:
+        image = self.robot.get_rgb_camera_image()
+        black_pixel_count = 0
+        total_pixel_count = len(image)
+
+        for pixel in image:
+            r, g, b = pixel
+            brightness = (r + g + b) / (3 * 255)
+            if brightness < 0.62:
+                black_pixel_count += 1
+
+        if total_pixel_count == 0:
             return False
-        width = image.width()
-        height = image.height()
-        black_pixels = 0
-        total_pixels = width * height
 
-        for x in range(0, width, 5):
-            for y in range(0, height, 5):
-                r = image.pixel(x, y, 0)
-                g = image.pixel(x, y, 1)
-                b = image.pixel(x, y, 2)
-                brightness = (r + g + b) / (3 * 255)
-                if brightness < 0.62:
-                    black_pixels += 1
-
-        ratio = black_pixels / (total_pixels / 25)
-        return ratio > 0.8
+        ratio = black_pixel_count / total_pixel_count
+        print(f"Black pixel ratio: {ratio:.2f}")
+        return ratio > 0.6
 
     def handle_state(self):
+        if self.exit_detected:
+            self.after_exit_drive_counter += 1
+            if self.after_exit_drive_counter > 100:
+                self.state = "stop"
+            return
+
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
                 self.ticks_check = self.RightTicks[1] + 1000
             elif self.RightTicks[1] > self.ticks_check:
-                self.state = "stop"
-            return
-
-        if self.check_camera_after_turn:
-            if self.is_camera_mostly_black():
-                self.final_drive_ticks = self.RightTicks[1] + self.final_drive_distance
-                self.state = "final_drive"
-            else:
-                self.state = "drive"
-            self.check_camera_after_turn = False
-            return
-
-        if self.state == "final_drive":
-            if self.RightTicks[1] >= self.final_drive_ticks:
                 self.state = "stop"
             return
 
@@ -148,8 +131,9 @@ class Robot:
 
         elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
-                if self.state == "turn_left":
-                    self.check_camera_after_turn = True
+                if self.state == "turn_left" and self.is_camera_mostly_black():
+                    self.exit_detected = True
+                    self.after_exit_drive_counter = 0
                 self.state = "drive"
 
     def reached_orientation(self):
@@ -164,8 +148,6 @@ class Robot:
             self.turn_left()
         elif self.state == "turn_right":
             self.turn_right()
-        elif self.state == "final_drive":
-            self.drive_to_target()
         else:
             self.stop()
 
