@@ -45,7 +45,7 @@ class Robot:
         front_ir = self.ir_center
         right_ir = self.ir[6]
 
-        # Kui kõik IR-id madalad, oleme väljas
+        # Kontrolli, kas oleme väljas
         if all(ir < 15 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -55,18 +55,18 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir > 100:
-                if front_ir < 100:
-                    self.state = "drive"  # Vasakul on sein, otse vaba -> edasi
-                else:
-                    # Vasakul ja otse sein --> pööra paremale
-                    self.turn_direction = "right"
-                    self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
-                    self.state = "turn"
-            else:
-                # Vasakul auk, pööra vasakule
+            if left_ir < 100:
+                # Vasakul on vaba -> pööra vasakule
                 self.turn_direction = "left"
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
+                self.state = "turn"
+            elif front_ir < 100:
+                # Vasakul on sein, otse vaba -> sõida otse edasi
+                self.state = "drive"
+            else:
+                # Otse ees on sein -> pööra paremale
+                self.turn_direction = "right"
+                self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
                 self.state = "turn"
 
         elif self.state == "turn":
@@ -82,13 +82,9 @@ class Robot:
         return orientation
 
     def reached_orientation(self):
-        """Check if robot has reached its orientation goal."""
-        if self.turn_direction == "left" and self.orientation > self.orientation_goal and self.orientation - self.orientation_goal <= 0.01:
-            return True
-        elif self.turn_direction == "right" and self.orientation < self.orientation_goal and self.orientation_goal - self.orientation <= 0.01:
-            return True
-        else:
-            return False
+        margin = 0.15  # umbes 8-9 kraadi, natuke vabam kui enne
+        angle_diff = abs(self.orientation - self.orientation_goal) % (2 * math.pi)
+        return angle_diff < margin or angle_diff > (2 * math.pi - margin)
 
     def update_wheel_speedL(self):
         """Update wheel speed using PID control."""
