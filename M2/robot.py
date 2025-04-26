@@ -1,3 +1,4 @@
+"""M2."""
 import math
 
 class Robot:
@@ -42,11 +43,6 @@ class Robot:
 
         self.orientation = 0
 
-        # Maze lõpustabiilsuse kontrolli muutujad
-        self.start_time = 0
-        self.time_stable_start = None
-        self.min_speed_threshold = 0.5  # rad/s
-
     def get_orientation(self):
         orientation = self.robot.get_orientation()
         if orientation < 0:
@@ -77,28 +73,10 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
-        # Esimeses spin'is salvestame start_time
-        if self.start_time == 0:
-            self.start_time = self.robot.get_time()
-
+        # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
-        # Maze väljapääsu tuvastamine
-        if self.robot.get_time() - self.start_time > 10:  # ainult peale 10 sekundit
-            all_ir_low = self.ir_left < 20 and self.ir_center < 20 and self.ir_right < 20
-            moving_slow = abs(self.LeftSpeed) < self.min_speed_threshold and abs(self.RightSpeed) < self.min_speed_threshold
-
-            if all_ir_low and moving_slow:
-                if self.time_stable_start is None:
-                    self.time_stable_start = self.robot.get_time()
-                elif self.robot.get_time() - self.time_stable_start > 1.0:
-                    print("Maze lõpp saavutatud! Robot jääb seisma.")
-                    self.state = "stop"
-                    return
-            else:
-                self.time_stable_start = None
-
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -109,12 +87,16 @@ class Robot:
 
         if self.state == "drive":
             if self.ir_center > 50:
+                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
+
             elif not self.left_gap_detected and self.ir_left > 150:
+                # Vasakul avaus tuvastatud
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
+
             elif self.left_gap_detected:
                 if self.ir_left < 20:
                     self.gap_close_counter += 1
