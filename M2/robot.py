@@ -26,6 +26,7 @@ class Robot:
 
         # Kas peale vasakpööret peab tegema kaamera kontrolli
         self.check_camera_after_turn = False
+        self.black_before_turn = False
 
         # Stop timer
         self.stop_timer_start = None
@@ -107,11 +108,21 @@ class Robot:
                 self.state = "stop"
             return
 
+        if self.state == "hard_stop":
+            self.stop()
+            return
+
         if self.check_camera_after_turn:
-            if self.is_camera_mostly_black():
+            black_after_turn = self.is_camera_mostly_black()
+            if self.black_before_turn and black_after_turn:
+                print("[Hard Stop] Must enne ja pärast vasakpööret. Kohe seisma!")
+                self.state = "hard_stop"
+            elif black_after_turn:
+                print("[Soft Stop] Ainult pärast vasakpööret must. Sõidame natuke edasi.")
                 self.state = "stop"
                 self.stop_timer_start = self.robot.get_time()
             else:
+                print("[Continue] Pildid okeid. Jätkame sõitu.")
                 self.state = "drive"
             self.check_camera_after_turn = False
             return
@@ -140,6 +151,7 @@ class Robot:
                         else:
                             self.state = "drive"
                     else:
+                        self.black_before_turn = self.is_camera_mostly_black()
                         self.state = "turn_left"
                         self.turn_start_orientation = self.orientation
                         self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
@@ -168,6 +180,9 @@ class Robot:
                 self.drive_to_target()
             else:
                 self.stop()
+        elif self.state == "hard_stop":
+            self.stop()
+
         else:
             self.handle_state()
             if self.state == "drive":
