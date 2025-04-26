@@ -64,7 +64,7 @@ class Robot:
     def sense(self) -> None:
         self.track_speed()
         self.ir = self.robot.get_ir_intensities_list()
-        self.ir_left = self.ir[1]
+        self.ir_left = self.ir[0]
         self.ir_center = self.ir[3]
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
@@ -87,7 +87,7 @@ class Robot:
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
-            elif self.ir_left < 10:
+            elif self.ir_left > 100:
                 # Vasakul auk -> keera vasakule
                 self.state = "turn_left"
                 self.turn_start_orientation = self.orientation
