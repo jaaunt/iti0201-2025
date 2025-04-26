@@ -1,3 +1,4 @@
+"""M2."""
 import math
 
 class Robot:
@@ -42,6 +43,10 @@ class Robot:
 
         self.orientation = 0
 
+        # --- Lisatud siia ---
+        self.stop_check_time = 30.0  # Sekundites - muuda kui vaja
+        self.stopped = False  # Kas oleme juba seisma jäänud
+
     def get_orientation(self):
         orientation = self.robot.get_orientation()
         if orientation < 0:
@@ -72,15 +77,34 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
+        # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
-        if self.state == "drive":
-            # Kui kõik sensorid on umbes 12 ±2, peata robot
-            if abs(self.ir_left - 12) < 2 and abs(self.ir_center - 12) < 2 and abs(self.ir_right - 12) < 2:
-                self.state = "stop"
+        if self.stopped:
+            return
 
-            elif self.ir_center > 50:
+        current_time = self.robot.get_time()
+
+        # Kui sim on juba jooksnud vähemalt 30 sekundit
+        if current_time > self.stop_check_time:
+            # Kui kõik sensorid ~12 (lubatud väikene erinevus +/-2)
+            if abs(self.ir_left - 12) < 2 and abs(self.ir_center - 12) < 2 and abs(self.ir_right - 12) < 2:
+                print("Kõik sensorid on umbes 12! Robot jääb seisma.")
+                self.state = "stop"
+                self.stopped = True
+                return
+
+        if all(ir < 10 for ir in self.ir):
+            if not self.stop_check:
+                self.stop_check = True
+                self.ticks_check = self.RightTicks[1] + 1000
+            elif self.RightTicks[1] > self.ticks_check:
+                self.state = "stop"
+            return
+
+        if self.state == "drive":
+            if self.ir_center > 50:
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
@@ -98,8 +122,10 @@ class Robot:
                     self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                     self.left_gap_detected = False
                     self.gap_close_counter = 0
+            else:
+                self.state = "drive"
 
-        elif self.state == "turn_left" or self.state == "turn_right":
+        elif self.state in ["turn_left", "turn_right"]:
             if self.reached_orientation():
                 self.state = "drive"
 
