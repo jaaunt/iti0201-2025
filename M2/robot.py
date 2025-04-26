@@ -19,6 +19,10 @@ class Robot:
         self.ir_center = 0.0
         self.ir_right = 0.0
 
+        # Avause tuvastamise muutujad
+        self.left_gap_detected = False
+        self.gap_close_counter = 0
+
         # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
@@ -83,17 +87,26 @@ class Robot:
 
         if self.state == "drive":
             if self.ir_center > 50:
-                # Sein ees -> keera paremale
+                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
-            elif self.ir_left > 150:
-                # Vasakul auk -> keera vasakule
-                self.state = "turn_left"
-                self.turn_start_orientation = self.orientation
-                self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
+
+            elif not self.left_gap_detected and self.ir_left > 150:
+                # Vasakul avaus tuvastatud
+                self.left_gap_detected = True
+                self.gap_close_counter = 0
+
+            elif self.left_gap_detected:
+                if self.ir_left < 20:
+                    self.gap_close_counter += 1
+                if self.gap_close_counter >= 5:
+                    self.state = "turn_left"
+                    self.turn_start_orientation = self.orientation
+                    self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
+                    self.left_gap_detected = False
+                    self.gap_close_counter = 0
             else:
-                # Vasakul on sein ja ees vaba
                 self.state = "drive"
 
         elif self.state == "turn_left" or self.state == "turn_right":
