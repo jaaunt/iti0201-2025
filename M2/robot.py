@@ -81,6 +81,11 @@ class Robot:
 
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
+        self.lidar = self.robot.get_lidar_range_list()
+        forward_indices = list(range(270, 360)) + list(range(0, 91))
+        forward_distances = [self.lidar[i] for i in forward_indices]
+        print(f"FORWARD LIDAR VALUES: {['INF' if math.isinf(d) else round(d, 2) for d in forward_distances]}")
+
     def handle_state(self):
         if self.all_ir_12():
             if self.check_exit_with_lidar():
