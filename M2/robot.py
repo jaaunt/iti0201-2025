@@ -92,7 +92,7 @@ class Robot:
             return
 
         if self.state == "drive":
-            if left_ir > 100 and front_ir < 100:
+            if left_ir > 10 and front_ir < 10:
                 # Vasakul sein ja otse vaba -> sõida edasi
                 self.state = "drive"
             elif left_ir < 10:
