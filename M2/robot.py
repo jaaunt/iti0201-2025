@@ -116,11 +116,13 @@ class Robot:
         self.limit = 0.1
         self.setpointL = -1
         self.setpointR = 1
+        self.stop_check = "drive"
 
     def turn_right(self):
         self.limit = 0.1
         self.setpointL = 1
         self.setpointR = -1
+        self.stop_check = "drive"
 
     def stop(self):
         self.setpointL = -10 if self.LeftSpeed > 0 else 0
