@@ -55,19 +55,18 @@ class Robot:
 
     def sense(self) -> None:
         self.track_speed()
-        self.ir = self.robot.get_ir_intensities_list()
-        self.ir_center = self.ir[3]
-        self.ir_left = self.ir[0]
+        self.ir_center = self.robot.get_ir_intensity_center()
+        self.ir_left = self.robot.get_ir_intensity_left()
         self.orientation = self.get_orientation()
 
-        print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
+        print(
+            f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
-        left_ir = self.ir[0]
-        front_ir = self.ir_center
-        right_ir = self.ir[6]
+        left_ir = self.robot.get_ir_intensity_left()
+        front_ir = self.robot.get_ir_intensity_center()
 
-        if all(ir < 10 for ir in self.ir):
+        if all(ir < 10 for ir in self.ir):  # selle jaoks pead ikka korra ir listi küsima
             if not self.stop_check:
                 self.stop_check = True
                 self.ticks_check = self.RightTicks[1] + 1000
@@ -77,19 +76,16 @@ class Robot:
 
         if self.state == "drive":
             if front_ir > 50:
-                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
-            elif left_ir < 10:
-                # Vasakul auk -> pööra vasakule
+            elif left_ir < 100:
                 self.state = "turn_left"
                 self.turn_start_orientation = self.orientation
                 self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
 
             else:
-                # Vasakul on sein ja ees vaba
                 self.state = "drive"
 
         elif self.state == "turn_left" or self.state == "turn_right":
