@@ -1,3 +1,4 @@
+"""M2."""
 import math
 
 class Robot:
@@ -18,12 +19,9 @@ class Robot:
         self.ir_center = 0.0
         self.ir_right = 0.0
 
-        # Avause ja exit tuvastamise muutujad
+        # Avause tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
-        self.first_left_done = False
-        self.check_exit_mode = False
-        self.exit_check_started = False
 
         # Kiiruse ja PID muutujad
         self.kp = 0.1
@@ -75,65 +73,45 @@ class Robot:
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
 
+        # Trükime kõik vajalikud andmed
         print(f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def handle_state(self):
-        if self.check_exit_mode:
-            self.handle_exit_check()
+        if all(ir < 10 for ir in self.ir):
+            if not self.stop_check:
+                self.stop_check = True
+                self.ticks_check = self.RightTicks[1] + 1000
+            elif self.RightTicks[1] > self.ticks_check:
+                self.state = "stop"
             return
 
         if self.state == "drive":
             if self.ir_center > 50:
+                # Sein ees -> pööra paremale
                 self.state = "turn_right"
                 self.turn_start_orientation = self.orientation
-                self.orientation_goal = (self.orientation - math.pi/2) % (2*math.pi)
+                self.orientation_goal = (self.orientation - math.pi / 2) % (2 * math.pi)
 
             elif not self.left_gap_detected and self.ir_left > 150:
+                # Vasakul avaus tuvastatud
                 self.left_gap_detected = True
                 self.gap_close_counter = 0
-
 
             elif self.left_gap_detected:
                 if self.ir_left < 20:
                     self.gap_close_counter += 1
                 if self.gap_close_counter >= 30:
-                    if not self.first_left_done:
-                        self.state = "turn_left"
-                        self.turn_start_orientation = self.orientation
-                        self.orientation_goal = (self.orientation + math.pi/2) % (2*math.pi)
-                        self.first_left_done = True
-                    else:
-                        # Teine auk - hakka kontrollima EXITi
-                        self.check_exit_mode = True
+                    self.state = "turn_left"
+                    self.turn_start_orientation = self.orientation
+                    self.orientation_goal = (self.orientation + math.pi / 2) % (2 * math.pi)
                     self.left_gap_detected = False
                     self.gap_close_counter = 0
+            else:
+                self.state = "drive"
 
         elif self.state == "turn_left" or self.state == "turn_right":
             if self.reached_orientation():
                 self.state = "drive"
-
-    def handle_exit_check(self):
-        if not self.exit_check_started:
-            # Hakka tegema 180 kraadi pööret
-            self.turn_start_orientation = self.orientation
-            self.orientation_goal = (self.orientation - math.pi) % (2*math.pi)
-            self.state = "exit_turn"
-            self.exit_check_started = True
-
-        if self.state == "exit_turn":
-            self.setpointL = 1
-            self.setpointR = -1
-            self.limit = 0.1
-            if self.reached_orientation():
-                # Kui 180 kraadi tehtud, vaata kas otse on IR väärtused 12
-                if self.ir_center < 15 and self.ir_left < 15 and self.ir_right < 15:
-                    self.state = "stop"
-                    print("Exit tuvastatud! Seisma!")
-                else:
-                    # Polnud veel väljas, mine tagasi drive!
-                    self.check_exit_mode = False
-                    self.exit_check_started = False
-                    self.state = "drive"
 
     def reached_orientation(self):
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
@@ -147,11 +125,6 @@ class Robot:
             self.turn_left()
         elif self.state == "turn_right":
             self.turn_right()
-        elif self.state == "exit_turn":
-            # eraldi 180 kraadi keeramiseks
-            self.setpointL = 1
-            self.setpointR = -1
-            self.limit = 0.1
         else:
             self.stop()
 
