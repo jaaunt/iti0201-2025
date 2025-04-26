@@ -60,18 +60,21 @@ class Robot:
         self.orientation = 0
 
     def snap_to_nearest_90(self, angle_rad):
+        """Fix the angle to snapping to the nearest 90 value 0, 90, 180, 270 or 360 degrees."""
         angle_deg = math.degrees(angle_rad)
         snapped_deg = round(angle_deg / 90) * 90
         snapped_deg = snapped_deg % 360
         return math.radians(snapped_deg)
 
     def get_orientation(self):
+        """Tune the orientation."""
         orientation = self.robot.get_orientation()
         if orientation < 0:
             orientation += 2 * math.pi
         return orientation
 
     def track_speed(self):
+        """Track speed."""
         self.LeftTicks[0] = self.LeftTicks[1]
         self.RightTicks[0] = self.RightTicks[1]
         self.LeftTicks[1] = self.robot.get_left_motor_encoder_ticks()
@@ -104,6 +107,7 @@ class Robot:
             f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def is_camera_mostly_black(self, threshold=0.62):
+        """Check if the camera image is mostly black."""
         image = self.robot.get_camera_rgb_image()
         rgb_image = image[:, :, :3]
         black_pixels = np.all(rgb_image < 30, axis=2)
@@ -112,6 +116,7 @@ class Robot:
         return black_ratio > threshold
 
     def handle_state(self):
+        """Handle the robots different states."""
         if all(ir < 10 for ir in self.ir):
             if not self.stop_check:
                 self.stop_check = True
@@ -182,6 +187,7 @@ class Robot:
                 self.state = "drive"
 
     def reached_orientation(self):
+        """Check if its reached the orientation goal with a dieffrence of 1 degree."""
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
         return abs(angle_error) < math.radians(1)
 
@@ -212,29 +218,34 @@ class Robot:
                 self.stop()
 
     def drive_to_target(self):
+        """Drive to the target."""
         self.setpointL = 5
         self.setpointR = 5
         self.limit = 0.05
 
     def turn_left(self):
+        """Turn left."""
         self.setpointL = -1
         self.setpointR = 1
         self.limit = 0.1
         print("turn left")
 
     def turn_right(self):
+        """Turn right."""
         self.setpointL = 1
         self.setpointR = -1
         self.limit = 0.1
         print("turn right")
 
     def stop(self):
+        """Stop the robot."""
         self.setpointL = 0
         self.setpointR = 0
         self.limit = 0.05
         print("stop")
 
     def update_wheel_speedL(self):
+        """Update the left wheel speed of the robot."""
         setpoint = self.setpointL
         speed = self.LeftSpeed
         error = setpoint - speed
@@ -245,6 +256,7 @@ class Robot:
         return max(min(u, self.limit), -self.limit)
 
     def update_wheel_speedR(self):
+        """Update the right wheel speed of the robot."""
         setpoint = self.setpointR
         speed = self.RightSpeed
         error = setpoint - speed
