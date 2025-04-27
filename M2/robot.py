@@ -127,7 +127,6 @@ class Robot:
             self.handle_turn_logic()
 
     def handle_hard_stop(self):
-        """Stop STOP STOP."""
         self.stop()
 
     def handle_check_camera_after_turn(self):
