@@ -118,65 +118,69 @@ class Robot:
     def handle_state(self):
         """Handle the robots different states."""
         if self.state == "hard_stop":
-            self.stop()
-            return
+            self.handle_hard_stop()
+        elif self.check_camera_after_turn:
+            self.handle_check_camera_after_turn()
+        elif self.state == "drive":
+            self.handle_drive_logic()
+        elif self.state in ["turn_left", "turn_right"]:
+            self.handle_turn_logic()
 
-        if self.check_camera_after_turn:
-            black_after_turn = self.is_camera_mostly_black()
-            if self.black_before_turn and black_after_turn:
-                print("[Hard Stop] Must enne ja pärast vasakpööret. Kohe seisma!")
-                self.state = "hard_stop"
-            elif black_after_turn:
-                print("[Soft Stop] Ainult pärast vasakpööret must. Sõidame natuke edasi.")
-                self.state = "stop"
-                self.stop_timer_start = self.robot.get_time()
-            else:
-                print("[Continue] Pildid okeid. Jätkame sõitu.")
-                self.state = "drive"
-            self.check_camera_after_turn = False
-            return
+    def handle_hard_stop(self):
+        self.stop()
 
-        if self.state == "drive":
-            if self.ir_center > 50:
-                self.state = "turn_right"
-                self.turn_start_orientation = self.orientation
-                self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
+    def handle_check_camera_after_turn(self):
+        black_after_turn = self.is_camera_mostly_black()
+        if self.black_before_turn and black_after_turn:
+            print("[Hard Stop] Must enne ja pärast vasakpööret. Kohe seisma!")
+            self.state = "hard_stop"
+        elif black_after_turn:
+            print("[Soft Stop] Ainult pärast vasakpööret must. Sõidame natuke edasi.")
+            self.state = "stop"
+            self.stop_timer_start = self.robot.get_time()
+        else:
+            print("[Continue] Pildid okeid. Jätkame sõitu.")
+            self.state = "drive"
+        self.check_camera_after_turn = False
 
-            elif not self.left_gap_detected and self.ir_left > 50:
-                self.left_gap_detected = True
-                self.gap_close_counter = 0
-
-            elif self.left_gap_detected:
-                if self.ir_left < 20:
-                    self.gap_close_counter += 1
-                if self.gap_close_counter >= 40:
-                    if self.left_turn_counter >= 6:
-                        # loop detected -> ignore left turn, drive straight
-                        if self.ir_center < 50:
-                            self.state = "turn_right"
-                            self.turn_start_orientation = self.orientation
-                            self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
-                            self.left_turn_counter = 0
-                        else:
-                            self.state = "drive"
-                    else:
-                        self.black_before_turn = self.is_camera_mostly_black()
-                        self.state = "turn_left"
+    def handle_drive_logic(self):
+        if self.ir_center > 50:
+            self.state = "turn_right"
+            self.turn_start_orientation = self.orientation
+            self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
+        elif not self.left_gap_detected and self.ir_left > 50:
+            self.left_gap_detected = True
+            self.gap_close_counter = 0
+        elif self.left_gap_detected:
+            if self.ir_left < 20:
+                self.gap_close_counter += 1
+            if self.gap_close_counter >= 40:
+                if self.left_turn_counter >= 6:
+                    if self.ir_center < 50:
+                        self.state = "turn_right"
                         self.turn_start_orientation = self.orientation
-                        self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
-                        self.left_turn_counter += 1
-                    self.left_gap_detected = False
-                    self.gap_close_counter = 0
-            else:
-                self.state = "drive"
+                        self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
+                        self.left_turn_counter = 0
+                    else:
+                        self.state = "drive"
+                else:
+                    self.black_before_turn = self.is_camera_mostly_black()
+                    self.state = "turn_left"
+                    self.turn_start_orientation = self.orientation
+                    self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
+                    self.left_turn_counter += 1
+                self.left_gap_detected = False
+                self.gap_close_counter = 0
+        else:
+            self.state = "drive"
 
-        elif self.state == "turn_left" or self.state == "turn_right":
-            if self.reached_orientation():
-                if self.state == "turn_left":
-                    self.check_camera_after_turn = True
-                if self.state == "turn_right":
-                    self.left_turn_counter = 0
-                self.state = "drive"
+    def handle_turn_logic(self):
+        if self.reached_orientation():
+            if self.state == "turn_left":
+                self.check_camera_after_turn = True
+            if self.state == "turn_right":
+                self.left_turn_counter = 0
+            self.state = "drive"
 
     def reached_orientation(self):
         """Check if its reached the orientation goal with a dieffrence of 1 degree."""
