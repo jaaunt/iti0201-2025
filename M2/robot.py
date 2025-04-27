@@ -127,9 +127,11 @@ class Robot:
             self.handle_turn_logic()
 
     def handle_hard_stop(self):
+        """Stop STOP STOP."""
         self.stop()
 
     def handle_check_camera_after_turn(self):
+        """Handle checking camera after turn."""
         black_after_turn = self.is_camera_mostly_black()
         if self.black_before_turn and black_after_turn:
             print("[Hard Stop] Must enne ja pärast vasakpööret. Kohe seisma!")
@@ -144,6 +146,7 @@ class Robot:
         self.check_camera_after_turn = False
 
     def handle_drive_logic(self):
+        """Handle drive logic."""
         if self.ir_center > 50:
             self.state = "turn_right"
             self.turn_start_orientation = self.orientation
@@ -175,6 +178,7 @@ class Robot:
             self.state = "drive"
 
     def handle_turn_logic(self):
+        """Handle turning logic."""
         if self.reached_orientation():
             if self.state == "turn_left":
                 self.check_camera_after_turn = True
