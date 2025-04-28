@@ -109,7 +109,6 @@ class Robot:
     def check_exit_with_lidar(self):
         lidar = self.robot.get_lidar_range_list()
         forward_indices = list(range(320, 640))
-        print(forward_indices)
         forward_distances = [lidar[i] for i in forward_indices]
         inf_count = sum(1 for d in forward_distances if math.isinf(d))
         if inf_count >= (2/3) * len(forward_distances):
@@ -121,7 +120,6 @@ class Robot:
         """Handle the robots different states."""
         if self.state == "drive":
             self.handle_drive_logic()
-            self.check_exit_with_lidar()
         elif self.state in ["turn_left", "turn_right"]:
             self.handle_turn_logic()
 
@@ -155,6 +153,7 @@ class Robot:
                 self.gap_close_counter = 0
         else:
             self.state = "drive"
+            self.check_exit_with_lidar()
 
     def handle_turn_logic(self):
         """Handle turning logic."""
