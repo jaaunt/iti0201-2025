@@ -1,6 +1,5 @@
 """M2."""
 import math
-import numpy as np
 
 
 class Robot:
