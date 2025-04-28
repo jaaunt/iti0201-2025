@@ -120,6 +120,7 @@ class Robot:
     def handle_state(self):
         """Handle the robots different states."""
         if self.state == "drive":
+            self.check_exit_with_lidar()
             self.handle_drive_logic()
         elif self.state in ["turn_left", "turn_right"]:
             self.handle_turn_logic()
@@ -158,7 +159,6 @@ class Robot:
     def handle_turn_logic(self):
         """Handle turning logic."""
         if self.reached_orientation():
-            self.check_exit_with_lidar()
             if self.state == "turn_right":
                 self.left_turn_counter = 0
             self.state = "drive"
