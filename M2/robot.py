@@ -132,7 +132,7 @@ class Robot:
 
         Fix the damn driving angle.
         If theres a wall in the way turn right.
-        If theres a gap in the left walll turn left.
+        If theres a gap in the left wall turn left.
         Otherwise keep driving straight.
         """
         snapped = self.snap_to_nearest_90(self.orientation)
