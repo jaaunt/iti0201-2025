@@ -115,6 +115,16 @@ class Robot:
         print(f"[Camera analysis] Black pixel ratio: {black_ratio:.2f}")
         return black_ratio > threshold
 
+    def check_exit_with_lidar(self):
+        lidar = self.robot.get_lidar_range_list()
+        forward_indices = list(range(270, 360)) + list(range(0, 91))
+        forward_distances = [lidar[i] for i in forward_indices]
+        inf_count = sum(1 for d in forward_distances if math.isinf(d))
+        if inf_count >= (2/3) * len(forward_distances):
+            self.state = "stop"
+            return True
+        return False
+
     def handle_state(self):
         """Handle the robots different states."""
         if self.state == "hard_stop":
@@ -181,7 +191,7 @@ class Robot:
         """Handle turning logic."""
         if self.reached_orientation():
             if self.state == "turn_left":
-                self.check_camera_after_turn = True
+                self.check_exit_with_lidar()
             if self.state == "turn_right":
                 self.left_turn_counter = 0
             self.state = "drive"
