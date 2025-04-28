@@ -126,6 +126,7 @@ class Robot:
 
     def handle_drive_logic(self):
         """Handle drive logic."""
+        self.check_exit_with_lidar()
         if self.ir_center > 50:
             self.state = "turn_right"
             self.turn_start_orientation = self.orientation
@@ -158,8 +159,6 @@ class Robot:
     def handle_turn_logic(self):
         """Handle turning logic."""
         if self.reached_orientation():
-            if self.state == "turn_left":
-                self.check_exit_with_lidar()
             if self.state == "turn_right":
                 self.left_turn_counter = 0
             self.state = "drive"
@@ -181,9 +180,6 @@ class Robot:
                 self.drive_to_target()
             else:
                 self.stop()
-        elif self.state == "hard_stop":
-            self.stop()
-
         else:
             self.handle_state()
             if self.state == "drive":
