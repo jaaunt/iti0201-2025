@@ -130,10 +130,23 @@ class Robot:
     def handle_drive_logic(self):
         """Handle drive logic.
 
+        Fix the damn driving angle.
         If theres a wall in the way turn right.
         If theres a gap in the left walll turn left.
         Otherwise keep driving straight.
         """
+        snapped = self.snap_to_nearest_90(self.orientation)
+        angle_error = (snapped - self.orientation + math.pi) % (2 * math.pi) - math.pi
+        if abs(angle_error) > math.radians(1):  # if the angle is off more than 1 degree
+            if angle_error > 0:
+                self.state = "turn_left"
+            else:
+                self.state = "turn_right"
+            self.turn_start_orientation = self.orientation
+            self.orientation_goal = snapped
+            print(f"Correcting driving direction by {math.degrees(angle_error):.1f} degrees.")
+            return
+
         if self.ir_center > 50:
             self.state = "turn_right"
             self.turn_start_orientation = self.orientation
