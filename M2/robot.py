@@ -136,7 +136,7 @@ class Robot:
         elif self.left_gap_detected:
             if self.ir_left < 20:
                 self.gap_close_counter += 1
-            if self.gap_close_counter >= 40:
+            if self.gap_close_counter >= 35:
                 if self.left_turn_counter >= 6:
                     if self.ir_center < 50:
                         self.state = "turn_right"
