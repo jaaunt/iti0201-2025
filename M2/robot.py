@@ -2,6 +2,54 @@
 import math
 
 
+class PID:
+    """PID controller."""
+
+    def __init__(self):
+        """Class initializer."""
+        self.kp = 0.1
+        self.ki = 0.001
+        self.kd = 0.001
+        self.limit = 0.05
+        self.setpoint = 0
+        self.ticks = [0, 0]
+        self.speed = 0
+        self.prev_error = 0
+        self.error_sum = 0
+        self.RADS_PER_TICK = 2 * math.pi / 508.8
+
+    def get_ticks(self):
+        """Get current ticks."""
+        return self.ticks[1]
+
+    def set_ticks(self, ticks):
+        """Set current ticks and remember last ticks value."""
+        self.ticks[0] = self.ticks[1]
+        self.ticks[1] = ticks
+
+    def set_setpoint(self, setpoint):
+        """Set setpoint."""
+        self.setpoint = setpoint
+
+    def get_speed(self):
+        """Get current speed."""
+        return self.speed
+
+    def update_wheel_speed(self, dt):
+        """Update wheel speed using PID control."""
+        error = self.setpoint - self.speed
+        error_diff = (error - self.prev_error) / dt if dt > 0 else 0
+        self.prev_error = error
+        self.error_sum += error * dt
+        u = self.kp * error + self.ki * self.error_sum + self.kd * error_diff
+        u = max(min(u, self.limit), -self.limit)
+        return u
+
+    def calculate_speed(self, dt):
+        """Calculate rotation speed based on encoder readings."""
+        self.speed = (self.ticks[1] - self.ticks[0]) * self.RADS_PER_TICK / dt
+
+
 class Robot:
     """Turtlebot robot."""
 
@@ -34,24 +82,19 @@ class Robot:
         self.stop_timer_start = None
         self.stop_drive_duration = 1.5
 
-        self.kp = 0.1
-        self.ki = 0.001
-        self.kd = 0.001
-        self.setpointL = 0
-        self.setpointR = 0
-        self.limit = 0.05
-
-        self.LeftTicks = [0, 0]
-        self.RightTicks = [0, 0]
-        self.LeftSpeed = 0
-        self.RightSpeed = 0
+        # pid variables
+        self.right_pid = PID()
+        self.left_pid = PID()
+        self.dt = 0
         self.time_memory = [0, 0]
-        self.previous_error_left = 0
-        self.previous_error_right = 0
-        self.error_sum_left = 0
-        self.error_sum_right = 0
+        self.drive_count = 0
 
         self.orientation = 0
+
+    def update_limits(self, limit):
+        """Update limits of PID controllers."""
+        self.left_pid.limit = limit
+        self.right_pid.limit = limit
 
     def snap_to_nearest_90(self, angle_rad):
         """Fix the angle to snapping to the nearest 90 value 0, 90, 180, 270 or 360 degrees."""
@@ -68,21 +111,16 @@ class Robot:
         return orientation
 
     def track_speed(self):
-        """Track speed."""
-        self.LeftTicks[0] = self.LeftTicks[1]
-        self.RightTicks[0] = self.RightTicks[1]
-        self.LeftTicks[1] = self.robot.get_left_motor_encoder_ticks()
-        self.RightTicks[1] = self.robot.get_right_motor_encoder_ticks()
+        """Track speed by looking at changes in encoder values."""
+        self.left_pid.set_ticks(self.robot.get_left_motor_encoder_ticks())
+        self.right_pid.set_ticks(self.robot.get_right_motor_encoder_ticks())
+
         self.time_memory[0] = self.time_memory[1]
         self.time_memory[1] = self.robot.get_time()
         self.dt = self.time_memory[1] - self.time_memory[0]
-        if self.dt != 0:
-            self.LeftSpeed = (self.LeftTicks[1] - self.LeftTicks[0]) * (2 * math.pi / 508.8) / self.dt
-            self.RightSpeed = (self.RightTicks[1] - self.RightTicks[0]) * (2 * math.pi / 508.8) / self.dt
-        else:
-            self.LeftSpeed = 0
-            self.RightSpeed = 0
-            self.dt = 0.01
+
+        self.left_pid.calculate_speed(self.dt)
+        self.right_pid.calculate_speed(self.dt)
 
     def sense(self) -> None:
         """Gather sensor data.
@@ -216,30 +254,35 @@ class Robot:
                 self.stop()
 
     def drive_to_target(self):
-        """Drive to the target."""
-        self.setpointL = 5
-        self.setpointR = 5
-        self.limit = 0.05
+        """Drive the robot straight towards the target."""
+        self.left_pid.set_setpoint(5)
+        self.right_pid.set_setpoint(5)
+        self.update_limits(0.05)
 
     def turn_left(self):
         """Turn left."""
-        self.setpointL = -1
-        self.setpointR = 1
-        self.limit = 0.1
+        self.left_pid.set_setpoint(-1)
+        self.right_pid.set_setpoint(1)
+        self.update_limits(0.1)
         print("turn left")
 
     def turn_right(self):
         """Turn right."""
-        self.setpointL = 1
-        self.setpointR = -1
-        self.limit = 0.1
+        self.left_pid.set_setpoint(-1)
+        self.right_pid.set_setpoint(1)
+        self.update_limits(0.1)
         print("turn right")
 
     def stop(self):
         """Stop the robot."""
-        self.setpointL = 0
-        self.setpointR = 0
-        self.limit = 0.05
+        self.left_pid.set_setpoint(-10 if self.left_pid.get_speed() > 0 else 0)
+        self.right_pid.set_setpoint(-10 if self.right_pid.get_speed() > 0 else 0)
+        self.update_limits(0.05)
+        if self.left_pid.get_speed() < 0.01 and self.right_pid.get_speed() < 0.01:
+            self.drive_count += 1
+            self.left_pid.set_setpoint(0)
+            self.right_pid.set_setpoint(0)
+            self.update_limits(0.05)
         print("stop")
 
     def update_wheel_speedL(self):
@@ -270,10 +313,8 @@ class Robot:
         Perform the actions decided in the planning step, such as moving or
         interacting with the environment.
         """
-        left_torque = self.update_wheel_speedL()
-        right_torque = self.update_wheel_speedR()
-        self.robot.set_left_motor_torque(left_torque)
-        self.robot.set_right_motor_torque(right_torque)
+        self.robot.set_left_motor_torque(self.left_pid.update_wheel_speed(self.dt))
+        self.robot.set_right_motor_torque(self.right_pid.update_wheel_speed(self.dt))
 
     def spin(self) -> None:
         """Spin the robot.
