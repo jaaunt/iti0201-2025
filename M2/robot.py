@@ -113,8 +113,9 @@ class Robot:
         forward_distances = [lidar[i] for i in forward_indices]
         inf_count = sum(1 for d in forward_distances if math.isinf(d))
         if inf_count >= (2/3) * len(forward_distances):
-            self.state = "stop"
-        else: self.state = "drive"
+            self.stop()
+        else:
+            self.state = "drive"
 
     def handle_state(self):
         """Handle the robots different states."""
