@@ -113,7 +113,7 @@ class Robot:
         inf_count = sum(1 for d in forward_distances if math.isinf(d))
         print(inf_count)
         if inf_count >= (2/3) * len(forward_distances):
-            self.stop()
+            self.state = "stop"
         else:
             self.state = "drive"
 
