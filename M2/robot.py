@@ -261,15 +261,15 @@ class Robot:
 
     def turn_left(self):
         """Turn left."""
-        self.left_pid.set_setpoint(1)
-        self.right_pid.set_setpoint(-1)
+        self.left_pid.set_setpoint(-1)
+        self.right_pid.set_setpoint(1)
         self.update_limits(0.1)
         print("turn left")
 
     def turn_right(self):
         """Turn right."""
-        self.left_pid.set_setpoint(-1)
-        self.right_pid.set_setpoint(1)
+        self.left_pid.set_setpoint(1)
+        self.right_pid.set_setpoint(-1)
         self.update_limits(0.1)
         print("turn right")
 
