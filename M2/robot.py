@@ -20,26 +20,21 @@ class Robot:
         self.turn_start_orientation = 0
         self.orientation_goal = 0
 
-        # Sensorite muutujad
         self.ir = []
         self.ir_left = 0.0
         self.ir_center = 0.0
         self.ir_right = 0.0
 
-        # Avause ja loopi tuvastamise muutujad
         self.left_gap_detected = False
         self.gap_close_counter = 0
         self.left_turn_counter = 0
 
-        # Kas peale vasakpööret peab tegema kaamera kontrolli
         self.check_camera_after_turn = False
         self.black_before_turn = False
 
-        # Stop timer
         self.stop_timer_start = None
-        self.stop_drive_duration = 1.5  # sek
+        self.stop_drive_duration = 1.5
 
-        # Kiiruse ja PID muutujad
         self.kp = 0.1
         self.ki = 0.001
         self.kd = 0.001
@@ -67,7 +62,7 @@ class Robot:
         return math.radians(snapped_deg)
 
     def get_orientation(self):
-        """Tune the orientation."""
+        """Get the robots orientation."""
         orientation = self.robot.get_orientation()
         if orientation < 0:
             orientation += 2 * math.pi
@@ -107,6 +102,10 @@ class Robot:
             f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
     def check_exit_with_lidar(self):
+        """Check the lidar distances 180 degrees in front.
+
+        If its mostly inf the robot is almost out and should do a last little sprint to end it a little further from the exit.
+        """
         lidar = self.robot.get_lidar_range_list()
         forward_indices = list(range(320, 640))
         forward_distances = [lidar[i] for i in forward_indices]
@@ -119,7 +118,10 @@ class Robot:
             self.state = "drive"
 
     def handle_state(self):
-        """Handle the robots different states."""
+        """Handle the robots different states.
+
+        Driving and turning both ways.
+        """
         if self.state == "drive":
             self.check_exit_with_lidar()
             self.handle_drive_logic()
@@ -127,7 +129,12 @@ class Robot:
             self.handle_turn_logic()
 
     def handle_drive_logic(self):
-        """Handle drive logic."""
+        """Handle drive logic.
+
+        If theres a wall in the way turn right.
+        If theres a gap in the left walll turn left.
+        Otherwise keep driving straight.
+        """
         if self.ir_center > 50:
             self.state = "turn_right"
             self.turn_start_orientation = self.orientation
@@ -158,14 +165,18 @@ class Robot:
             self.state = "drive"
 
     def handle_turn_logic(self):
-        """Handle turning logic."""
+        """Handle turning logic.
+
+        If the robot finished turning start driving again.
+        If the robot made a right turn reset the left turn counter.
+        """
         if self.reached_orientation():
             if self.state == "turn_right":
                 self.left_turn_counter = 0
             self.state = "drive"
 
     def reached_orientation(self):
-        """Check if its reached the orientation goal with a dieffrence of 1 degree."""
+        """Check if its reached the orientation goal with a difference of 1 degree."""
         angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
         return abs(angle_error) < math.radians(1)
 
