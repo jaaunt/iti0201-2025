@@ -145,7 +145,6 @@ class Robot:
                     else:
                         self.state = "drive"
                 else:
-                    self.black_before_turn = self.is_camera_mostly_black()
                     self.state = "turn_left"
                     self.turn_start_orientation = self.orientation
                     self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
