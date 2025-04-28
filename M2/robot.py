@@ -102,6 +102,9 @@ class Robot:
         self.ir_center = self.ir[3]
         self.ir_right = self.ir[6]
         self.orientation = self.get_orientation()
+        self.lidar = self.robot.get_lidar_range_list()
+
+        print(self.lidar)
 
         print(
             f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
