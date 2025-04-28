@@ -37,7 +37,7 @@ class Robot:
 
         # Stop timer
         self.stop_timer_start = None
-        self.stop_drive_duration = 2.5  # sek
+        self.stop_drive_duration = 1.5  # sek
 
         # Kiiruse ja PID muutujad
         self.kp = 0.1
