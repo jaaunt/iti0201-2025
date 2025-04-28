@@ -174,12 +174,8 @@ class Robot:
         Process the data collected during sensing and decide the next course
         of action for the robot.
         """
-        if self.state == "stop" and self.stop_timer_start is not None:
-            elapsed = self.robot.get_time() - self.stop_timer_start
-            if elapsed < self.stop_drive_duration:
-                self.drive_to_target()
-            else:
-                self.stop()
+        if self.state == "stop":
+            self.stop()
         else:
             self.handle_state()
             if self.state == "drive":
