@@ -106,15 +106,6 @@ class Robot:
         print(
             f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
 
-    def is_camera_mostly_black(self, threshold=0.62):
-        """Check if the camera image is mostly black."""
-        image = self.robot.get_camera_rgb_image()
-        rgb_image = image[:, :, :3]
-        black_pixels = np.all(rgb_image < 30, axis=2)
-        black_ratio = np.sum(black_pixels) / (rgb_image.shape[0] * rgb_image.shape[1])
-        print(f"[Camera analysis] Black pixel ratio: {black_ratio:.2f}")
-        return black_ratio > threshold
-
     def check_exit_with_lidar(self):
         lidar = self.robot.get_lidar_range_list()
         forward_indices = list(range(320, 640))
@@ -123,38 +114,14 @@ class Robot:
         inf_count = sum(1 for d in forward_distances if math.isinf(d))
         if inf_count >= (2/3) * len(forward_distances):
             self.state = "stop"
-            return True
-        return False
+        else: self.state = "drive"
 
     def handle_state(self):
         """Handle the robots different states."""
-        if self.state == "hard_stop":
-            self.handle_hard_stop()
-        elif self.check_camera_after_turn:
-            self.handle_check_camera_after_turn()
-        elif self.state == "drive":
+        if self.state == "drive":
             self.handle_drive_logic()
         elif self.state in ["turn_left", "turn_right"]:
             self.handle_turn_logic()
-
-    def handle_hard_stop(self):
-        """Stop STOP STOP."""
-        self.stop()
-
-    def handle_check_camera_after_turn(self):
-        """Handle checking camera after turn."""
-        black_after_turn = self.is_camera_mostly_black()
-        if self.black_before_turn and black_after_turn:
-            print("[Hard Stop] Must enne ja pärast vasakpööret. Kohe seisma!")
-            self.state = "hard_stop"
-        elif black_after_turn:
-            print("[Soft Stop] Ainult pärast vasakpööret must. Sõidame natuke edasi.")
-            self.state = "stop"
-            self.stop_timer_start = self.robot.get_time()
-        else:
-            print("[Continue] Pildid okeid. Jätkame sõitu.")
-            self.state = "drive"
-        self.check_camera_after_turn = False
 
     def handle_drive_logic(self):
         """Handle drive logic."""
