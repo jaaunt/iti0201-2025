@@ -110,10 +110,10 @@ class Robot:
         forward_distances = [lidar[i] for i in forward_indices]
         inf_count = sum(1 for d in forward_distances if math.isinf(d))
         print(inf_count)
-        if inf_count >= (2/3) * len(forward_distances):
+        if inf_count >= (2 / 3) * len(forward_distances):
             self.stop_timer_start = self.robot.get_time()
             self.state = "stop"
-        else :
+        else:
             self.state = "drive"
 
     def handle_state(self):
