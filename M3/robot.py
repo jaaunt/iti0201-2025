@@ -166,26 +166,34 @@ class Robot:
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
+        front = self.dir_lidar.get("front")
+        back = self.dir_lidar.get("back")
 
-        if (math.isinf(self.dir_lidar["front"]) and not math.isinf(self.dir_lidar["back"])) or \
-                (math.isinf(self.dir_lidar["back"]) and not math.isinf(self.dir_lidar["front"])):
-            print("CENTERING SKIPPED – one side lidar is inf")
-            self.movement_state = "stopping"
-            return
-
-        if self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf'):
+        if math.isinf(front) and math.isinf(back):
             print("CENTERING SKIPPED – both sides inf")
             self.movement_state = "stopping"
             return
 
-        current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
-        current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
-        if math.isnan(current_back):
-            error = self.CENTERING_DISTANCE - current_front
-        elif math.isnan(current_front):
-            error = self.CENTERING_DISTANCE - current_back
+        if math.isinf(front):
+            back = back % self.EDGE_LENGTH
+            error = back - self.CENTERING_DISTANCE
+        elif math.isinf(back):
+            front = front % self.EDGE_LENGTH
+            error = self.CENTERING_DISTANCE - front
         else:
-            error = current_front - current_back
+            front = front % self.EDGE_LENGTH
+            back = back % self.EDGE_LENGTH
+            error = front - back
+
+        print(f"CENTERING – front: {front:.2f}, back: {back:.2f}, error: {error:.2f}")
+
+        if abs(error) < self.DIST_MARGIN_OF_ERROR:
+            self.movement_state = "stopping"
+        else:
+            direction = 1 if error > 0 else -1
+            self.left_pid.set_setpoint(2 * direction)
+            self.right_pid.set_setpoint(2 * direction)
+            self.update_limits(0.03)
 
         print(f"CENTERING – front: {current_front:.2f}, back: {current_back:.2f}, error: {error:.2f}")
 
