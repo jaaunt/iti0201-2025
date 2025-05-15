@@ -92,9 +92,6 @@ class Robot:
         self.DIST_MARGIN_OF_ERROR = 0.01
         self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
 
-        # fall back for centering
-        self.center_start_ticks = None
-
     # sense functions
     def get_direction(self):
         """Determine the robot's direction based on its orientation."""
@@ -150,55 +147,28 @@ class Robot:
         elif self.movement_state == "stopping" and self.stopped():
             print("STOPPED")
             self.move = False
-            self.center_start_ticks = None
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
-        front = self.dir_lidar.get("front", float("inf"))
-        back = self.dir_lidar.get("back", float("inf"))
-        left = self.dir_lidar.get("left", float("inf"))
-        right = self.dir_lidar.get("right", float("inf"))
-
-        if self.at_stop_zone():
+        if self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf'):
             self.movement_state = "stopping"
-            return
+        else:
+            current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
+            current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
+            if math.isnan(current_back):
+                error = self.CENTERING_DISTANCE - current_front
+            elif math.isnan(current_front):
+                error = self.CENTERING_DISTANCE - current_back
+            else:
+                error = current_front - current_back
 
-        if front == back == left == right == float('inf'):
-            self.movement_state = "stopping"
-            return
-
-        if front == back == float("inf"):
-            if self.center_start_ticks is None:
-                self.center_start_ticks = self.right_pid.get_ticks()
-                self.left_pid.set_setpoint(2)
-                self.right_pid.set_setpoint(2)
-                self.update_limits(0.03)
-            elif self.right_pid.get_ticks() - self.center_start_ticks >= (self.EDGE_LENGTH / 2) / self.METERS_PER_TICK:
-                self.left_pid.set_setpoint(0)
-                self.right_pid.set_setpoint(0)
-                self.update_limits(0.05)
+            if abs(error) < self.DIST_MARGIN_OF_ERROR:
                 self.movement_state = "stopping"
-                self.center_start_ticks = None
-            return
-
-        current_back = back % self.EDGE_LENGTH if back != float("inf") else None
-        current_front = front % self.EDGE_LENGTH if front != float("inf") else None
-
-        if current_back is None:
-            error = self.CENTERING_DISTANCE - current_front
-        elif current_front is None:
-            error = self.CENTERING_DISTANCE - current_back
-        else:
-            error = current_front - current_back
-
-        if abs(error) < self.DIST_MARGIN_OF_ERROR:
-            self.movement_state = "stopping"
-            self.center_start_ticks = None
-        else:
-            direction = 1 if error > 0 else -1
-            self.left_pid.set_setpoint(2 * direction)
-            self.right_pid.set_setpoint(2 * direction)
-            self.update_limits(0.03)
+            else:
+                direction = 1 if error > 0 else -1
+                self.left_pid.set_setpoint(2 * direction)
+                self.right_pid.set_setpoint(2 * direction)
+                self.update_limits(0.03)
 
     def stop(self):
         """Stop the robot."""
