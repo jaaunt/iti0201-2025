@@ -52,7 +52,6 @@ class PID:
         self.speed = (self.ticks[1] - self.ticks[0]) * self.RADS_PER_TICK / dt
 
 
-
 class Robot:
     """Turtlebot robot."""
 
@@ -392,4 +391,5 @@ class Robot:
         self.act()
 
     def print_map(self):
+        """Print the map at the end."""
         print("Map")
