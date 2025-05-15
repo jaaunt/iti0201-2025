@@ -414,4 +414,5 @@ class Robot:
             self.left_pid.set_setpoint(5 - correction)
             self.right_pid.set_setpoint(5 + correction)
             self.update_limits(0.05)
+            print("corrected the angle")
 
