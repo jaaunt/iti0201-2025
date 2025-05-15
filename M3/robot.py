@@ -392,15 +392,18 @@ class Robot:
         self.act()
 
     def print_map(self):
-        """Print the discovered map in a clear grid format."""
-        all_cells = set(self.map.keys())
+        """Print grid-aligned map based on discovered structure."""
+        known = set(self.map.keys())
         for neighbors in self.map.values():
-            all_cells.update(neighbors)
+            known.update(neighbors)
 
-        min_x = min(x for x, y in all_cells)
-        max_x = max(x for x, y in all_cells)
-        min_y = min(y for x, y in all_cells)
-        max_y = max(y for x, y in all_cells)
+        # include unmapped (but known) cells too
+        known.update(self.unmapped_cells)
+
+        min_x = min(x for x, y in known)
+        max_x = max(x for x, y in known)
+        min_y = min(y for x, y in known)
+        max_y = max(y for x, y in known)
 
         print("Map")
         print("┌" + "─" * (max_x - min_x + 1) + "┐")
@@ -416,6 +419,8 @@ class Robot:
                     row += "E"
                 elif pos in self.map:
                     row += " "
+                elif pos in self.unmapped_cells:
+                    row += "."
                 else:
                     row += "#"
             row += "│"
