@@ -409,6 +409,9 @@ class Robot:
     def print_map(self):
         """Print map based on visual_map for display only."""
         all_cells = set(self.visual_map.keys()) | set(self.map.keys())
+        for neighbors in self.map.values():
+            all_cells.update(neighbors)
+
         min_x = min(x for x, y in all_cells)
         max_x = max(x for x, y in all_cells)
         min_y = min(y for x, y in all_cells)
@@ -425,6 +428,8 @@ class Robot:
                     row += "S"
                 elif self.stop_zone == pos:
                     row += "E"
+                elif pos in self.map:
+                    row += " "
                 elif pos in self.visual_map:
                     row += self.visual_map[pos]
                 else:
