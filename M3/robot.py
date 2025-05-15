@@ -81,6 +81,7 @@ class Robot:
         self.target = (0, 0)
         self.stop_zone = None
         self.route = None
+        self.visual_map = {}
         # pid variables
         self.right_pid = PID()
         self.left_pid = PID()
@@ -221,6 +222,12 @@ class Robot:
 
         print("MAPPED", self.current_pos, ":", neighbours)
         self.map[self.current_pos] = neighbours  # add to map
+        # the visual part
+        for dir_name, delta in self.dir_cells.items():
+            neighbor = (self.current_pos[0] + delta[0], self.current_pos[1] + delta[1])
+            if neighbor not in neighbours and neighbor not in self.map:
+                if neighbor not in self.visual_map:
+                    self.visual_map[neighbor] = "#"
         self.set_target(self.unmapped_cells.pop())  # set next cell to map
 
     def move_to_target(self):
@@ -392,5 +399,26 @@ class Robot:
         self.act()
 
     def print_map(self):
-        """Print grid-aligned map based on discovered structure."""
-        print(map)
+        """Print map based on visual_map for display only."""
+        all_cells = set(self.visual_map.keys()) | set(self.map.keys())
+        min_x = min(x for x, y in all_cells)
+        max_x = max(x for x, y in all_cells)
+        min_y = min(y for x, y in all_cells)
+        max_y = max(y for x, y in all_cells)
+
+        print("Map")
+        for y in range(max_y, min_y - 1, -1):
+            row = ""
+            for x in range(min_x, max_x + 1):
+                pos = (x, y)
+                if pos == self.current_pos:
+                    row += "R"
+                elif pos == (0, 0):
+                    row += "S"
+                elif self.stop_zone == pos:
+                    row += "E"
+                elif pos in self.visual_map:
+                    row += self.visual_map[pos]
+                else:
+                    row += "#"
+            print(row)
