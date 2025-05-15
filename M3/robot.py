@@ -96,8 +96,9 @@ class Robot:
         self.lost_centering = False
         self.lost_start_time = None
         self.prev_side_lidar = []
+        self.fallback_goal_ticks = None
 
-    # sense functions
+        # sense functions
     def get_direction(self):
         """Determine the robot's direction based on its orientation."""
         if -0.02 < self.orientation < 0.02:
@@ -190,7 +191,17 @@ class Robot:
             self.left_pid.set_setpoint(1)
             self.right_pid.set_setpoint(1)
             self.update_limits(0.02)
-            return
+
+            if self.fallback_goal_ticks is None:
+                self.fallback_goal_ticks = self.right_pid.get_ticks() + 0.2 / self.METERS_PER_TICK
+                print("FALLBACK MOVEMENT – driving 20cm forward")
+
+            elif self.right_pid.get_ticks() >= self.fallback_goal_ticks:
+                print("FALLBACK MOVEMENT COMPLETE – assuming centered")
+                self.movement_state = "stopping"
+                self.fallback_goal_ticks = None
+                self.lost_centering = False
+                self.lost_start_time = None
 
         self.lost_centering = False
         self.lost_start_time = None
