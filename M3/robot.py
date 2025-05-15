@@ -229,6 +229,20 @@ class Robot:
                 self.route = [self.target]
             else:
                 self.find_route()
+
+        # both front and back lidar show inf, but map says we can go multiple cells forward
+        if self.dir_lidar.get("front") == float("inf") and self.dir_lidar.get("back") == float("inf"):
+            open_cells = self.estimate_open_path_length()
+            if open_cells >= 3:
+                print(f"LONG STRAIGHT GAP: {open_cells} cells ahead. Driving 2 cells forward.")
+                self.move = True
+                self.movement_state = "driving_forward"
+                self.goal_ticks = self.right_pid.get_ticks() + 2 * self.EDGE_LENGTH / self.METERS_PER_TICK
+                self.left_pid.set_setpoint(5)
+                self.right_pid.set_setpoint(5)
+                self.update_limits(0.05)
+                return
+
         next_cell = self.route[0]  # get next cell to move to in route
         print("ROUTE:", self.route)
 
@@ -393,3 +407,18 @@ class Robot:
     def print_map(self):
         """Print the map at the end."""
         print("Map")
+
+    def estimate_open_path_length(self):
+        """How many cells you can go foward based on the map."""
+        length = 0
+        pos = self.current_pos
+        delta = self.dir_cells[self.direction]
+
+        while True:
+            next_pos = (pos[0] + delta[0], pos[1] + delta[1])
+            if next_pos in self.map.get(pos, []):
+                length += 1
+                pos = next_pos
+            else:
+                break
+        return length
