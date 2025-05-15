@@ -161,7 +161,6 @@ class Robot:
                             self.CENTERING_DISTANCE / self.METERS_PER_TICK)
                 print("CENTERING BY DISTANCE – starting from ticks:", self.centering_start_ticks)
 
-            # jätka aeglast liikumist
             self.left_pid.set_setpoint(1)
             self.right_pid.set_setpoint(1)
             self.update_limits(0.02)
