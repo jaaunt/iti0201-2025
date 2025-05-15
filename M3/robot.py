@@ -154,7 +154,7 @@ class Robot:
             self.move = False
 
     def center_in_cell(self):
-        """Adjust position to center of the current cell, even in long corridors."""
+        """Adjust position to center of the current cell, and try its best in long corridors."""
         front = self.dir_lidar["front"]
         back = self.dir_lidar["back"]
 
