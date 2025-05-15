@@ -409,7 +409,7 @@ class Robot:
         angle_error = (snapped - self.orientation + math.pi) % (2 * math.pi) - math.pi
 
         # only correct if error is significant (over 1 deg)
-        if abs(angle_error) > math.radians(1):
+        if abs(angle_error) > math.radians(2):
             correction = angle_error * 5  # tuning factor
             self.left_pid.set_setpoint(5 - correction)
             self.right_pid.set_setpoint(5 + correction)
