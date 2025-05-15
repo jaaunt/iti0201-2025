@@ -223,8 +223,16 @@ class Robot:
         print("MAPPED", self.current_pos, ":", neighbours)
         self.map[self.current_pos] = neighbours  # add to map
         # the visual part
-        for dir_name, delta in self.dir_cells.items():
-            neighbor = (self.current_pos[0] + delta[0], self.current_pos[1] + delta[1])
+        self.visual_map[self.current_pos] = " "
+
+        # hallway
+        for neighbor in neighbours:
+            if neighbor not in self.visual_map:
+                self.visual_map[neighbor] = " "
+
+        # walls
+        for dir_name, (dx, dy) in self.dir_cells.items():
+            neighbor = (self.current_pos[0] + dx, self.current_pos[1] + dy)
             if neighbor not in neighbours and neighbor not in self.map:
                 if neighbor not in self.visual_map:
                     self.visual_map[neighbor] = "#"
