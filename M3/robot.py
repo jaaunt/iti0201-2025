@@ -248,15 +248,19 @@ class Robot:
                 direction = potential_direction
                 break
 
-        if self.needs_angle_correction():
-            print("CORRECTING ORIENTATION BEFORE MOVING")
-            self.correct_orientation()
-        else:
-            if self.direction == direction:
+        if self.direction == direction:
+            if self.can_drive_by_ticks_across_infinity(next_cell):
+                print("DRIVING ACROSS GAP USING TICKS")
                 self.route.pop(0)
                 self.move_forward()
+            elif self.needs_angle_correction():
+                print("CORRECTING ORIENTATION BEFORE MOVING")
+                self.correct_orientation()
             else:
-                self.turn(direction)
+                self.route.pop(0)
+                self.move_forward()
+        else:
+            self.turn(direction)
 
     def find_route(self):
         """Find route to the target via A* algorithm."""
@@ -431,3 +435,19 @@ class Robot:
         self.update_limits(0.1)
         self.movement_state = "correcting"
         self.move = True
+
+    def can_drive_by_ticks_across_infinity(self, next_cell):
+        """Check if robot can drive by ticks even if lidar shows inf."""
+        # 1. Must be straight ahead
+        diff = (next_cell[0] - self.current_pos[0], next_cell[1] - self.current_pos[1])
+        expected = self.dir_cells[self.direction]
+        if diff != expected:
+            return False
+
+        # 2. Lidar must show inf in front and back
+        if self.dir_lidar.get("front") != float("inf") or self.dir_lidar.get("back") != float("inf"):
+            return False
+
+        # 3. next_cell must be mapped, and current cell must link to it
+        return next_cell in self.map.get(self.current_pos, [])
+
