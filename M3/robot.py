@@ -92,6 +92,10 @@ class Robot:
         self.DIST_MARGIN_OF_ERROR = 0.01
         self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
 
+        # inf case stuff
+        self.gap_mode = False
+        self.gap_cells_remaining = 0
+
     # sense functions
     def get_direction(self):
         """Determine the robot's direction based on its orientation."""
@@ -132,13 +136,25 @@ class Robot:
     def check_movement(self):
         """Stop the robot if it has reached its goal."""
         if self.movement_state == "driving_forward" and self.right_pid.get_ticks() >= self.goal_ticks:
-            # change cell
             diff = self.dir_cells[self.direction]
             self.current_pos = self.current_pos[0] + diff[0], self.current_pos[1] + diff[1]
             print("MOVED TO", self.current_pos)
-            # stop
-            self.movement_state = "centering"
-            print("CENTERING")
+
+            if self.gap_mode:
+                self.gap_cells_remaining -= 1
+                if self.gap_cells_remaining > 0:
+                    print("GAP MODE – moving to next cell")
+                    self.goal_ticks = self.right_pid.get_ticks() + self.EDGE_LENGTH / self.METERS_PER_TICK
+                    self.left_pid.set_setpoint(5)
+                    self.right_pid.set_setpoint(5)
+                    self.update_limits(0.05)
+                else:
+                    print("GAP MODE ENDED")
+                    self.gap_mode = False
+                    self.movement_state = "centering"
+            else:
+                self.movement_state = "centering"
+                print("CENTERING")
         elif self.movement_state == "turning" and self.direction == self.goal_direction:
             print("TURNED", self.direction)
             self.movement_state = "stopping"
@@ -150,25 +166,36 @@ class Robot:
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
+
+        if (math.isinf(self.dir_lidar["front"]) and not math.isinf(self.dir_lidar["back"])) or \
+                (math.isinf(self.dir_lidar["back"]) and not math.isinf(self.dir_lidar["front"])):
+            print("CENTERING SKIPPED – one side lidar is inf")
+            self.movement_state = "stopping"
+            return
+
         if self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf'):
+            print("CENTERING SKIPPED – both sides inf")
+            self.movement_state = "stopping"
+            return
+
+        current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
+        current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
+        if math.isnan(current_back):
+            error = self.CENTERING_DISTANCE - current_front
+        elif math.isnan(current_front):
+            error = self.CENTERING_DISTANCE - current_back
+        else:
+            error = current_front - current_back
+
+        print(f"CENTERING – front: {current_front:.2f}, back: {current_back:.2f}, error: {error:.2f}")
+
+        if abs(error) < self.DIST_MARGIN_OF_ERROR:
             self.movement_state = "stopping"
         else:
-            current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
-            current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
-            if math.isnan(current_back):
-                error = self.CENTERING_DISTANCE - current_front
-            elif math.isnan(current_front):
-                error = self.CENTERING_DISTANCE - current_back
-            else:
-                error = current_front - current_back
-
-            if abs(error) < self.DIST_MARGIN_OF_ERROR:
-                self.movement_state = "stopping"
-            else:
-                direction = 1 if error > 0 else -1
-                self.left_pid.set_setpoint(2 * direction)
-                self.right_pid.set_setpoint(2 * direction)
-                self.update_limits(0.03)
+            direction = 1 if error > 0 else -1
+            self.left_pid.set_setpoint(2 * direction)
+            self.right_pid.set_setpoint(2 * direction)
+            self.update_limits(0.03)
 
     def stop(self):
         """Stop the robot."""
@@ -241,6 +268,8 @@ class Robot:
                 self.left_pid.set_setpoint(5)
                 self.right_pid.set_setpoint(5)
                 self.update_limits(0.05)
+                self.gap_mode = True
+                self.gap_cells_remaining = 2
                 return
 
         next_cell = self.route[0]  # get next cell to move to in route
