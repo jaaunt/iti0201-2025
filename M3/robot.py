@@ -195,16 +195,6 @@ class Robot:
             self.right_pid.set_setpoint(2 * direction)
             self.update_limits(0.03)
 
-        print(f"CENTERING – front: {current_front:.2f}, back: {current_back:.2f}, error: {error:.2f}")
-
-        if abs(error) < self.DIST_MARGIN_OF_ERROR:
-            self.movement_state = "stopping"
-        else:
-            direction = 1 if error > 0 else -1
-            self.left_pid.set_setpoint(2 * direction)
-            self.right_pid.set_setpoint(2 * direction)
-            self.update_limits(0.03)
-
     def stop(self):
         """Stop the robot."""
         self.left_pid.set_setpoint(-10 if self.left_pid.get_speed() > 0 else 0)
