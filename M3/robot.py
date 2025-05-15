@@ -133,6 +133,7 @@ class Robot:
     def check_movement(self):
         """Stop the robot if it has reached its goal."""
         if self.movement_state == "driving_forward" and self.right_pid.get_ticks() >= self.goal_ticks:
+            self.correct_orientation_while_driving()
             # change cell
             diff = self.dir_cells[self.direction]
             self.current_pos = self.current_pos[0] + diff[0], self.current_pos[1] + diff[1]
@@ -394,3 +395,23 @@ class Robot:
     def print_map(self):
         """Print map"""
         print(self.map)
+
+    def snap_to_nearest_90(self, angle_rad):
+        """Fix the angle to nearest 90 degrees (0, 90, 180, 270)."""
+        angle_deg = math.degrees(angle_rad)
+        snapped_deg = round(angle_deg / 90) * 90
+        snapped_deg = snapped_deg % 360
+        return math.radians(snapped_deg)
+
+    def correct_orientation_while_driving(self):
+        """Adjust if robot drifts off course while driving forward."""
+        snapped = self.snap_to_nearest_90(self.orientation)
+        angle_error = (snapped - self.orientation + math.pi) % (2 * math.pi) - math.pi
+
+        # only correct if error is significant (over 1 deg)
+        if abs(angle_error) > math.radians(1):
+            correction = angle_error * 5  # tuning factor
+            self.left_pid.set_setpoint(5 - correction)
+            self.right_pid.set_setpoint(5 + correction)
+            self.update_limits(0.05)
+
