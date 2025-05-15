@@ -175,17 +175,18 @@ class Robot:
             return
 
         if math.isinf(front):
-            back = back % self.EDGE_LENGTH
-            error = back - self.CENTERING_DISTANCE
+            back_val = back % self.EDGE_LENGTH
+            error = back_val - self.CENTERING_DISTANCE
+            print(f"CENTERING – front: inf, back: {back_val:.2f}, error: {error:.2f}")
         elif math.isinf(back):
-            front = front % self.EDGE_LENGTH
-            error = self.CENTERING_DISTANCE - front
+            front_val = front % self.EDGE_LENGTH
+            error = self.CENTERING_DISTANCE - front_val
+            print(f"CENTERING – front: {front_val:.2f}, back: inf, error: {error:.2f}")
         else:
-            front = front % self.EDGE_LENGTH
-            back = back % self.EDGE_LENGTH
-            error = front - back
-
-        print(f"CENTERING – front: {front:.2f}, back: {back:.2f}, error: {error:.2f}")
+            front_val = front % self.EDGE_LENGTH
+            back_val = back % self.EDGE_LENGTH
+            error = front_val - back_val
+            print(f"CENTERING – front: {front_val:.2f}, back: {back_val:.2f}, error: {error:.2f}")
 
         if abs(error) < self.DIST_MARGIN_OF_ERROR:
             self.movement_state = "stopping"
