@@ -92,13 +92,8 @@ class Robot:
         self.ANGLE_MARGIN_OF_ERROR = 0.05
         self.DIST_MARGIN_OF_ERROR = 0.01
         self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
-        # centering helpers
-        self.lost_centering = False
-        self.lost_start_time = None
-        self.prev_side_lidar = []
-        self.fallback_goal_ticks = None
 
-        # sense functions
+    # sense functions
     def get_direction(self):
         """Determine the robot's direction based on its orientation."""
         if -0.02 < self.orientation < 0.02:
@@ -155,77 +150,26 @@ class Robot:
             self.move = False
 
     def center_in_cell(self):
-        """Adjust position to center of the current cell, and try its best in long corridors."""
-        front = self.dir_lidar["front"]
-        back = self.dir_lidar["back"]
-
-        if front == float('inf') and back == float('inf'):
-            left_open = self.dir_lidar["left"] > self.EDGE_LENGTH
-            right_open = self.dir_lidar["right"] > self.EDGE_LENGTH
-
-            if not self.lost_centering:
-                self.lost_centering = True
-                self.lost_start_time = self.robot.get_time()
-                print("CENTERING LOST — starting fallback timer")
-
-            elapsed = self.robot.get_time() - self.lost_start_time
-
-            if elapsed > 3.0 and (left_open or right_open):
-                print("CENTER ESTIMATED — fallback by time + side open")
-                self.movement_state = "stopping"
-                self.lost_centering = False
-                self.lost_start_time = None
-                return
-
-            if len(self.prev_side_lidar) >= 2:
-                prev = self.prev_side_lidar[-2]
-                curr = self.dir_lidar
-                if (prev["right"] > self.EDGE_LENGTH and curr["right"] < self.EDGE_LENGTH) or \
-                        (prev["left"] > self.EDGE_LENGTH and curr["left"] < self.EDGE_LENGTH):
-                    print("CENTER ESTIMATED — by side wall change")
-                    self.movement_state = "stopping"
-                    self.lost_centering = False
-                    self.lost_start_time = None
-                    return
-
-            self.left_pid.set_setpoint(1)
-            self.right_pid.set_setpoint(1)
-            self.update_limits(0.02)
-
-            if self.fallback_goal_ticks is None:
-                self.fallback_goal_ticks = self.right_pid.get_ticks() + 0.2 / self.METERS_PER_TICK
-                print("FALLBACK MOVEMENT – driving 20cm forward")
-
-            elif self.right_pid.get_ticks() >= self.fallback_goal_ticks:
-                print("FALLBACK MOVEMENT COMPLETE – assuming centered")
-                self.movement_state = "stopping"
-                self.fallback_goal_ticks = None
-                self.lost_centering = False
-                self.lost_start_time = None
-
-        self.lost_centering = False
-        self.lost_start_time = None
-
-        current_back = back % self.EDGE_LENGTH if back != float('inf') else None
-        current_front = front % self.EDGE_LENGTH if front != float('inf') else None
-
-        if current_front is not None and current_back is None:
-            error = self.CENTERING_DISTANCE - current_front
-        elif current_back is not None and current_front is None:
-            error = current_back - self.CENTERING_DISTANCE
-        elif current_front is not None and current_back is not None:
-            error = current_front - current_back
-        else:
-            self.movement_state = "stopping"
-            return
-
-        if abs(error) < self.DIST_MARGIN_OF_ERROR:
+        """Adjust position to center of the current cell."""
+        if self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf'):
             self.movement_state = "stopping"
         else:
-            direction = 1 if error > 0 else -1
-            self.left_pid.set_setpoint(2 * direction)
-            self.right_pid.set_setpoint(2 * direction)
-            self.update_limits(0.03)
+            current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
+            current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
+            if math.isnan(current_back):
+                error = self.CENTERING_DISTANCE - current_front
+            elif math.isnan(current_front):
+                error = self.CENTERING_DISTANCE - current_back
+            else:
+                error = current_front - current_back
+
+            if abs(error) < self.DIST_MARGIN_OF_ERROR:
+                self.movement_state = "stopping"
+            else:
+                direction = 1 if error > 0 else -1
+                self.left_pid.set_setpoint(2 * direction)
+                self.right_pid.set_setpoint(2 * direction)
+                self.update_limits(0.03)
 
     def stop(self):
         """Stop the robot."""
@@ -402,15 +346,6 @@ class Robot:
             self.dir_lidar["back"] = self.lidar[150]  # back (180 degrees)
             self.dir_lidar["left"] = self.lidar[320]  # left (90 degrees)
             self.dir_lidar["right"] = self.lidar[1]  # right (270 degrees)
-
-        # save prev left and rights for front back inf cases
-        self.prev_side_lidar.append({
-            "left": self.dir_lidar["left"],
-            "right": self.dir_lidar["right"],
-            "time": self.robot.get_time()
-        })
-        if len(self.prev_side_lidar) > 5:
-            self.prev_side_lidar.pop(0)
 
     def plan(self) -> None:
         """Plan the robot's actions.
