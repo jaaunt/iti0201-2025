@@ -147,14 +147,6 @@ class Robot:
         elif self.movement_state == "stopping" and self.stopped():
             print("STOPPED")
             self.move = False
-        elif self.movement_state == "correcting":
-            snapped = self.snap_to_nearest_90(self.orientation)
-            error = (snapped - self.orientation + math.pi) % (2 * math.pi) - math.pi
-            if abs(error) < math.radians(1):
-                self.stop()
-                print("CORRECTION DONE")
-                self.movement_state = None
-                self.move = False
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
@@ -249,16 +241,8 @@ class Robot:
                 break
 
         if self.direction == direction:
-            if self.can_drive_by_ticks_across_infinity(next_cell):
-                print("DRIVING ACROSS GAP USING TICKS")
-                self.route.pop(0)
-                self.move_forward()
-            elif self.needs_angle_correction():
-                print("CORRECTING ORIENTATION BEFORE MOVING")
-                self.correct_orientation()
-            else:
-                self.route.pop(0)
-                self.move_forward()
+            self.route.pop(0)
+            self.move_forward()
         else:
             self.turn(direction)
 
@@ -409,45 +393,3 @@ class Robot:
     def print_map(self):
         """Print the map at the end."""
         print("Map")
-
-    def needs_angle_correction(self):
-        """Check if orientation deviates from nearest 90°."""
-        snapped = self.snap_to_nearest_90(self.orientation)
-        angle_error = (snapped - self.orientation + math.pi) % (2 * math.pi) - math.pi
-        return abs(angle_error) > math.radians(1)
-
-    def snap_to_nearest_90(self, angle_rad):
-        """Round angle to nearest 90 degrees."""
-        angle_deg = math.degrees(angle_rad)
-        snapped_deg = round(angle_deg / 90) * 90 % 360
-        return math.radians(snapped_deg)
-
-    def correct_orientation(self):
-        """Correct orientation to nearest 90°."""
-        target = self.snap_to_nearest_90(self.orientation)
-        error = (target - self.orientation + math.pi) % (2 * math.pi) - math.pi
-        if error > 0:
-            self.left_pid.set_setpoint(-1)
-            self.right_pid.set_setpoint(1)
-        else:
-            self.left_pid.set_setpoint(1)
-            self.right_pid.set_setpoint(-1)
-        self.update_limits(0.1)
-        self.movement_state = "correcting"
-        self.move = True
-
-    def can_drive_by_ticks_across_infinity(self, next_cell):
-        """Check if robot can drive by ticks even if lidar shows inf."""
-        # 1. Must be straight ahead
-        diff = (next_cell[0] - self.current_pos[0], next_cell[1] - self.current_pos[1])
-        expected = self.dir_cells[self.direction]
-        if diff != expected:
-            return False
-
-        # 2. Lidar must show inf in front and back
-        if self.dir_lidar.get("front") != float("inf") or self.dir_lidar.get("back") != float("inf"):
-            return False
-
-        # 3. next_cell must be mapped, and current cell must link to it
-        return next_cell in self.map.get(self.current_pos, [])
-
