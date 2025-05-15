@@ -92,6 +92,10 @@ class Robot:
         self.DIST_MARGIN_OF_ERROR = 0.01
         self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
 
+        # centering helpers for inf cases
+        self.centering_start_ticks = None
+        self.centering_target_ticks = None
+
     # sense functions
     def get_direction(self):
         """Determine the robot's direction based on its orientation."""
@@ -151,8 +155,26 @@ class Robot:
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
         if self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf'):
-            self.movement_state = "stopping"
+            if self.centering_start_ticks is None:
+                self.centering_start_ticks = self.right_pid.get_ticks()
+                self.centering_target_ticks = self.centering_start_ticks + (
+                            self.CENTERING_DISTANCE / self.METERS_PER_TICK)
+                print("CENTERING BY DISTANCE – starting from ticks:", self.centering_start_ticks)
+
+            # jätka aeglast liikumist
+            self.left_pid.set_setpoint(1)
+            self.right_pid.set_setpoint(1)
+            self.update_limits(0.02)
+
+            if self.right_pid.get_ticks() >= self.centering_target_ticks:
+                print("CENTERING COMPLETE – by ticks")
+                self.movement_state = "stopping"
+                self.centering_start_ticks = None
+                self.centering_target_ticks = None
+            return
         else:
+            self.centering_start_ticks = None
+            self.centering_target_ticks = None
             current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
             current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
             if math.isnan(current_back):
