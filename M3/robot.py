@@ -92,6 +92,10 @@ class Robot:
         self.DIST_MARGIN_OF_ERROR = 0.01
         self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
 
+        # orientation fixing after reaching a cell
+        self.orientation_goal = None
+        self.correcting_orientation = False
+
     # sense functions
     def get_direction(self):
         """Determine the robot's direction based on its orientation."""
@@ -145,8 +149,19 @@ class Robot:
         elif self.movement_state == "centering":
             self.center_in_cell()
         elif self.movement_state == "stopping" and self.stopped():
-            print("STOPPED")
-            self.move = False
+            if self.correcting_orientation:
+                print("ANGLE CORRECTION COMPLETE")
+                self.correcting_orientation = False
+                self.orientation_goal = None
+                self.move = False
+            elif self.needs_angle_correction():
+                self.correcting_orientation = True
+                self.orientation_goal = self.snap_to_nearest_90(self.orientation)
+                print("STARTING ANGLE CORRECTION to", math.degrees(self.orientation_goal), "°")
+                self.correct_orientation()
+            else:
+                print("STOPPED")
+                self.move = False
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
@@ -372,6 +387,13 @@ class Robot:
             self.print_map()
             self.state = "done"
 
+        if self.correcting_orientation and self.orientation_goal is not None:
+            angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
+            if abs(angle_error) < math.radians(1):
+                self.left_pid.set_setpoint(0)
+                self.right_pid.set_setpoint(0)
+                self.update_limits(0.05)
+
     def act(self) -> None:
         """Execute planned actions.
 
@@ -393,3 +415,27 @@ class Robot:
     def print_map(self):
         """Print the map at the end."""
         print("Map")
+
+    def needs_angle_correction(self):
+        """Check if angle correction is needed (more than 1 deg off from 90-step)."""
+        snapped = self.snap_to_nearest_90(self.orientation)
+        angle_error = (snapped - self.orientation + math.pi) % (2 * math.pi) - math.pi
+        return abs(angle_error) > math.radians(1)
+
+    def snap_to_nearest_90(self, angle_rad):
+        """Snap angle to closest 90-degree step (0, 90, 180, 270)."""
+        angle_deg = math.degrees(angle_rad)
+        snapped_deg = round(angle_deg / 90) * 90
+        snapped_deg = snapped_deg % 360
+        return math.radians(snapped_deg)
+
+    def correct_orientation(self):
+        """Adjust robot orientation to nearest cardinal direction."""
+        angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
+        if angle_error > 0:
+            self.left_pid.set_setpoint(-1)
+            self.right_pid.set_setpoint(1)
+        else:
+            self.left_pid.set_setpoint(1)
+            self.right_pid.set_setpoint(-1)
+        self.update_limits(0.1)
