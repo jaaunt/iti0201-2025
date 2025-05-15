@@ -392,4 +392,32 @@ class Robot:
         self.act()
 
     def print_map(self):
+        """Print the discovered map in a clear grid format."""
+        all_cells = set(self.map.keys())
+        for neighbors in self.map.values():
+            all_cells.update(neighbors)
+
+        min_x = min(x for x, y in all_cells)
+        max_x = max(x for x, y in all_cells)
+        min_y = min(y for x, y in all_cells)
+        max_y = max(y for x, y in all_cells)
+
         print("Map")
+        print("┌" + "─" * (max_x - min_x + 1) + "┐")
+        for y in range(max_y, min_y - 1, -1):
+            row = "│"
+            for x in range(min_x, max_x + 1):
+                pos = (x, y)
+                if pos == self.current_pos:
+                    row += "R"
+                elif pos == (0, 0):
+                    row += "S"
+                elif self.stop_zone == pos:
+                    row += "E"
+                elif pos in self.map:
+                    row += " "
+                else:
+                    row += "#"
+            row += "│"
+            print(row)
+        print("└" + "─" * (max_x - min_x + 1) + "┘")
