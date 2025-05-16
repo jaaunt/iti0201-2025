@@ -401,15 +401,14 @@ class Robot:
         for neighbors in self.map.values():
             all_cells.update(neighbors)
 
-        # determine map bounds
         min_x = min(x for x, y in all_cells)
         max_x = max(x for x, y in all_cells)
         min_y = min(y for x, y in all_cells)
         max_y = max(y for x, y in all_cells)
 
         # calculate grid size
-        width = (max_x - min_x) * 2 + 1
-        height = (max_y - min_y) * 2 + 1
+        width = (max_x - min_x + 1) * 2 + 1
+        height = (max_y - min_y + 1) * 2 + 2
         grid = [["#" for _ in range(width)] for _ in range(height)]
 
         # draw the maze
@@ -440,3 +439,4 @@ class Robot:
         # print the result
         for row in grid:
             print("".join(row))
+
