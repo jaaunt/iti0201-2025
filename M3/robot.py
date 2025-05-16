@@ -409,8 +409,8 @@ class Robot:
         max_y = max(y for x, y in all_cells)
 
         # build a visual grid 3x3
-        width = (max_x - min_x + 1) * 2
-        height = (max_y - min_y + 1) * 2
+        width = (max_x - min_x + 1) * 2 + 1
+        height = (max_y - min_y + 1) * 2 + 2
         grid = [["#" for _ in range(width)] for _ in range(height)]
 
         # map cells to visual positions
