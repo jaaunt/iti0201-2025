@@ -396,19 +396,17 @@ class Robot:
 
     def print_map(self):
         """Print the maze as ASCII map with walls (#) and corridors ( )."""
-        # define all cell coordinates that are part of the map
         map_cells = self.map.keys()
         all_cells = set(map_cells)
         for neighbors in self.map.values():
             all_cells.update(neighbors)
 
-        # determine boundaries
         min_x = min(x for x, y in all_cells)
         max_x = max(x for x, y in all_cells)
         min_y = min(y for x, y in all_cells)
         max_y = max(y for x, y in all_cells)
 
-        # build a visual grid 3x3
+        # build a grid
         width = (max_x - min_x + 1) * 2 + 1
         height = (max_y - min_y + 1) * 2 + 2
         grid = [["#" for _ in range(width)] for _ in range(height)]
