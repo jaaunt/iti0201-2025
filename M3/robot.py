@@ -395,24 +395,41 @@ class Robot:
         self.act()
 
     def print_map(self):
-        """Print a visual map to the console."""
-        # find map boundaries
-        min_x = min(pos[0] for pos in self.map.keys())
-        max_x = max(pos[0] for pos in self.map.keys())
-        min_y = min(pos[1] for pos in self.map.keys())
-        max_y = max(pos[1] for pos in self.map.keys())
+        """Print the maze as ASCII map with walls (#) and corridors ( )."""
+        # Define all cell coordinates that are part of the map
+        map_cells = self.map.keys()
+        all_cells = set(map_cells)
+        for neighbors in self.map.values():
+            all_cells.update(neighbors)
 
-        # build visual map
-        map_output = []
-        for y in range(max_y, min_y - 1, -1):  # print top to bottom
-            row = ""
-            for x in range(min_x, max_x + 1):
-                if (x, y) in self.map:
-                    row += " "  # free space
-                else:
-                    row += "#"  # wall/unknown
-            map_output.append(row)
+        # determine boundaries
+        min_x = min(x for x, y in all_cells)
+        max_x = max(x for x, y in all_cells)
+        min_y = min(y for x, y in all_cells)
+        max_y = max(y for x, y in all_cells)
 
-        # Print map
-        print("\n".join(map_output))
+        # build a visual grid 3x3
+        width = (max_x - min_x + 1) * 2 + 1
+        height = (max_y - min_y + 1) * 2 + 1
+        grid = [["#" for _ in range(width)] for _ in range(height)]
+
+        # map cells to visual positions
+        for (x, y), neighbors in self.map.items():
+            cx, cy = (x - min_x) * 2 + 1, (max_y - y) * 2 + 1
+            grid[cy][cx] = " "  # center of cell
+
+            for nx, ny in neighbors:
+                dx = nx - x
+                dy = ny - y
+                if dx == 1:  # right
+                    grid[cy][cx + 1] = " "
+                elif dx == -1:  # left
+                    grid[cy][cx - 1] = " "
+                elif dy == 1:  # up
+                    grid[cy - 1][cx] = " "
+                elif dy == -1:  # down
+                    grid[cy + 1][cx] = " "
+
+        print("\n".join("".join(row) for row in grid))
+
 
