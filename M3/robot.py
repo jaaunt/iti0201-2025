@@ -408,8 +408,8 @@ class Robot:
         max_y = max(y for x, y in all_cells)
 
         # calculate grid size
-        width = (max_x - min_x) * 2 + 3
-        height = (max_y - min_y) * 2 + 3
+        width = (max_x - min_x) * 2 + 1
+        height = (max_y - min_y) * 2 + 1
         grid = [["#" for _ in range(width)] for _ in range(height)]
 
         # draw the maze
