@@ -395,41 +395,48 @@ class Robot:
         self.act()
 
     def print_map(self):
-        """Print the maze as ASCII map with walls (#) and corridors ( )."""
-        # Define all cell coordinates that are part of the map
+        """Print ASCII maze map: S=start, E=exit, #=wall, ' '=corridor."""
         map_cells = self.map.keys()
         all_cells = set(map_cells)
         for neighbors in self.map.values():
             all_cells.update(neighbors)
 
-        # determine boundaries
+        # determine map bounds
         min_x = min(x for x, y in all_cells)
         max_x = max(x for x, y in all_cells)
         min_y = min(y for x, y in all_cells)
         max_y = max(y for x, y in all_cells)
 
-        # build a visual grid 3x3
+        # calculate grid size
         width = (max_x - min_x + 1) * 2 + 1
-        height = (max_y - min_y + 1) * 2 + 1
+        height = (max_y - min_y + 1) * 2 + 2  # extra row at bottom
         grid = [["#" for _ in range(width)] for _ in range(height)]
 
-        # map cells to visual positions
+        # draw the maze
         for (x, y), neighbors in self.map.items():
             cx, cy = (x - min_x) * 2 + 1, (max_y - y) * 2 + 1
-            grid[cy][cx] = " "  # center of cell
+            pos = (x, y)
+
+            # start and end markers
+            if pos == (0, 0):
+                grid[cy][cx] = "S"
+            elif self.stop_zone is not None and pos == self.stop_zone:
+                grid[cy][cx] = "E"
+            else:
+                grid[cy][cx] = " "
 
             for nx, ny in neighbors:
                 dx = nx - x
                 dy = ny - y
-                if dx == 1:  # right
+                if dx == 1:
                     grid[cy][cx + 1] = " "
-                elif dx == -1:  # left
+                elif dx == -1:
                     grid[cy][cx - 1] = " "
-                elif dy == 1:  # up
+                elif dy == 1:
                     grid[cy - 1][cx] = " "
-                elif dy == -1:  # down
+                elif dy == -1:
                     grid[cy + 1][cx] = " "
 
-        print("\n".join("".join(row) for row in grid))
-
-
+        # print the result
+        for row in grid:
+            print("".join(row))
