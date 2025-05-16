@@ -409,7 +409,7 @@ class Robot:
 
         # calculate grid size
         width = (max_x - min_x + 1) * 2 + 1
-        height = (max_y - min_y + 1) * 2 + 2  # extra row at bottom
+        height = (max_y - min_y + 1) * 2 + 2
         grid = [["#" for _ in range(width)] for _ in range(height)]
 
         # draw the maze
