@@ -52,6 +52,7 @@ class PID:
         self.speed = (self.ticks[1] - self.ticks[0]) * self.RADS_PER_TICK / dt
 
 
+
 class Robot:
     """Turtlebot robot."""
 
@@ -88,6 +89,7 @@ class Robot:
         # constants
         self.EDGE_LENGTH = 0.615
         self.CENTERING_DISTANCE = 0.3
+        self.CUTOFF_DISTANCE = 0.5
         self.ANGLE_MARGIN_OF_ERROR = 0.05
         self.DIST_MARGIN_OF_ERROR = 0.01
         self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
@@ -150,12 +152,14 @@ class Robot:
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
-        if self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf'):
+        print("FRONT:", self.dir_lidar["front"] % self.EDGE_LENGTH)
+        print("BACK:", self.dir_lidar["back"] % self.EDGE_LENGTH)
+        if (self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf')) or self.dir_lidar["front"] < self.CENTERING_DISTANCE:
             self.movement_state = "stopping"
         else:
             current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
             current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
-            if math.isnan(current_back):
+            if math.isnan(current_back) or current_back > self.CUTOFF_DISTANCE:
                 error = self.CENTERING_DISTANCE - current_front
             elif math.isnan(current_front):
                 error = self.CENTERING_DISTANCE - current_back
@@ -342,9 +346,9 @@ class Robot:
         self.lidar = self.robot.get_lidar_range_list()
         if self.lidar:
             self.dir_lidar["front"] = min(self.lidar[470:490])  # front (0 degrees)
-            self.dir_lidar["back"] = min(self.lidar[140:160])  # back (180 degrees)
-            self.dir_lidar["left"] = self.lidar[320]  # left (90 degrees)
-            self.dir_lidar["right"] = self.lidar[1]  # right (270 degrees)
+            self.dir_lidar["back"] = min(self.lidar[150:170])  # back (180 degrees)
+            self.dir_lidar["left"] = min(self.lidar[310:330])  # left (90 degrees)
+            self.dir_lidar["right"] = min(self.lidar[630:] + self.lidar[:10])  # right (270 degrees)
 
     def plan(self) -> None:
         """Plan the robot's actions.
@@ -391,5 +395,24 @@ class Robot:
         self.act()
 
     def print_map(self):
-        """Print the map at the end."""
-        print("Map")
+        """Print a visual map to the console."""
+        # find map boundaries
+        min_x = min(pos[0] for pos in self.map.keys())
+        max_x = max(pos[0] for pos in self.map.keys())
+        min_y = min(pos[1] for pos in self.map.keys())
+        max_y = max(pos[1] for pos in self.map.keys())
+
+        # build visual map
+        map_output = []
+        for y in range(max_y, min_y - 1, -1):  # print top to bottom
+            row = ""
+            for x in range(min_x, max_x + 1):
+                if (x, y) in self.map:
+                    row += " "  # free space
+                else:
+                    row += "#"  # wall/unknown
+            map_output.append(row)
+
+        # Print map
+        print("\n".join(map_output))
+
