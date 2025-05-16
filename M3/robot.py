@@ -344,7 +344,7 @@ class Robot:
             self.dir_lidar["front"] = min(self.lidar[475:485])  # front (0 degrees)
             self.dir_lidar["back"] = min(self.lidar[145:155])  # back (180 degrees)
             self.dir_lidar["left"] = min(self.lidar[315:325])  # left (90 degrees)
-            self.dir_lidar["right"] = min(self.lidar[1])  # right (270 degrees)
+            self.dir_lidar["right"] = self.lidar[1]  # right (270 degrees)
 
     def plan(self) -> None:
         """Plan the robot's actions.
