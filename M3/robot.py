@@ -341,8 +341,8 @@ class Robot:
 
         self.lidar = self.robot.get_lidar_range_list()
         if self.lidar:
-            self.dir_lidar["front"] = min(self.lidar[475:485])  # front (0 degrees)
-            self.dir_lidar["back"] = min(self.lidar[145:155])  # back (180 degrees)
+            self.dir_lidar["front"] = min(self.lidar[470:490])  # front (0 degrees)
+            self.dir_lidar["back"] = min(self.lidar[140:160])  # back (180 degrees)
             self.dir_lidar["left"] = self.lidar[320]  # left (90 degrees)
             self.dir_lidar["right"] = self.lidar[1]  # right (270 degrees)
 
