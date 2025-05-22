@@ -193,7 +193,7 @@ class Robot:
 
     def stopped(self):
         """Check if robot has stopped moving."""
-        return self.left_pid.get_speed() == self.right_pid.get_speed() == 0
+        return abs(self.left_pid.get_speed()) < 0.01 and abs(self.right_pid.get_speed()) < 0.01
 
     def at_target(self):
         """Check if robot has reached its current target."""
@@ -215,6 +215,7 @@ class Robot:
         # if lidar shows inf in 3 or more directions, then stop zone has likely been found
         if is_stop_zone >= 3:
             self.stop_zone = self.current_pos
+            print("STOP ZONE:", self.dir_lidar)
         else:
             for cell in neighbours:  # add each newly discovered cell to unmapped_cells
                 if cell not in self.map.keys():
@@ -328,7 +329,6 @@ class Robot:
         This method updates internal state variables based on sensor readings.
         """
         self.orientation = self.robot.get_orientation()
-        print("ORIENTATION:", self.orientation)
 
         direction = self.get_direction()
         if direction != self.direction:
