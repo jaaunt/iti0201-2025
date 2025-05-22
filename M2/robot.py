@@ -157,18 +157,12 @@ class Robot:
         else:
             current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
             current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
-            if math.isnan(current_front) and math.isnan(current_back):
-                self.movement_state = "stopping"
-                return
-            elif math.isnan(current_back):
-                error = current_front - self.CENTERING_DISTANCE
-            elif math.isnan(current_front):
+            if math.isnan(current_front):
                 error = self.CENTERING_DISTANCE - current_back
+            elif math.isnan(current_back) or current_front + current_back > self.CUTOFF_DISTANCE or self.dir_lidar["front"] < self.STOP_DISTANCE:
+                error = current_front - self.CENTERING_DISTANCE
             else:
-                if current_front + current_back > self.CUTOFF_DISTANCE or self.dir_lidar["front"] < self.STOP_DISTANCE:
-                    error = current_front - self.CENTERING_DISTANCE
-                else:
-                    error = current_front - current_back
+                error = current_front - current_back
 
             if abs(error) < self.DIST_MARGIN_OF_ERROR:
                 self.movement_state = "stopping"
