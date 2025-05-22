@@ -150,27 +150,34 @@ class Robot:
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
-        # print("FRONT MODULUS:", self.dir_lidar["front"] % self.EDGE_LENGTH)
-        # print("BACK:", self.dir_lidar["back"])
-        if self.dir_lidar["front"] == float('inf') and self.dir_lidar["back"] == float('inf'):
+        front = self.dir_lidar["front"]
+        back = self.dir_lidar["back"]
+
+        valid_front = not (math.isinf(front) or math.isnan(front))
+        valid_back = not (math.isinf(back) or math.isnan(back))
+
+        if not valid_front and not valid_back:
+            print("CENTERING SKIPPED: both front and back are invalid.")
+            return
+
+        current_front = front % self.EDGE_LENGTH if valid_front else None
+        current_back = back % self.EDGE_LENGTH if valid_back else None
+
+        if valid_front and not valid_back:
+            error = current_front - self.CENTERING_DISTANCE
+        elif valid_back and not valid_front:
+            error = self.CENTERING_DISTANCE - current_back
+        else:
+            center = (current_front + current_back) / 2
+            error = current_front - current_back
+
+        if abs(error) < self.DIST_MARGIN_OF_ERROR:
             self.movement_state = "stopping"
         else:
-            current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
-            current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
-            if math.isnan(current_front):
-                error = self.CENTERING_DISTANCE - current_back
-            elif math.isnan(current_back) or current_front + current_back > self.CUTOFF_DISTANCE or self.dir_lidar["front"] < self.STOP_DISTANCE:
-                error = current_front - self.CENTERING_DISTANCE
-            else:
-                error = current_front - current_back
-
-            if abs(error) < self.DIST_MARGIN_OF_ERROR:
-                self.movement_state = "stopping"
-            else:
-                direction = 1 if error > 0 else -1
-                self.left_pid.set_setpoint(2 * direction)
-                self.right_pid.set_setpoint(2 * direction)
-                self.update_limits(0.03)
+            direction = 1 if error > 0 else -1
+            self.left_pid.set_setpoint(2 * direction)
+            self.right_pid.set_setpoint(2 * direction)
+            self.update_limits(0.03)
 
     def stop(self):
         """Stop the robot."""
