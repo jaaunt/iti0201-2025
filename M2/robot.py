@@ -1,5 +1,6 @@
-"""M2."""
+"""M3."""
 import math
+from queue import PriorityQueue
 
 
 class PID:
@@ -16,7 +17,8 @@ class PID:
         self.speed = 0
         self.prev_error = 0
         self.error_sum = 0
-        self.RADS_PER_TICK = 2 * math.pi / 508.8
+        self.TICKS_PER_ROTATION = 508.8
+        self.RADS_PER_TICK = 2 * math.pi / self.TICKS_PER_ROTATION
 
     def get_ticks(self):
         """Get current ticks."""
@@ -50,6 +52,7 @@ class PID:
         self.speed = (self.ticks[1] - self.ticks[0]) * self.RADS_PER_TICK / dt
 
 
+
 class Robot:
     """Turtlebot robot."""
 
@@ -60,58 +63,54 @@ class Robot:
             robot (object): An instance of a Turtlebot-like robot interface.
         """
         self.robot = robot
-        self.state = "drive"
-        self.turn_direction = "left"
-        self.stop_check = False
-        self.ticks_check = 0
-        self.turn_start_orientation = 0
-        self.orientation_goal = 0
-
-        self.ir = []
-        self.ir_left = 0.0
-        self.ir_center = 0.0
-        self.ir_right = 0.0
-
-        self.left_gap_detected = False
-        self.gap_close_counter = 0
-        self.left_turn_counter = 0
-
-        self.check_camera_after_turn = False
-        self.black_before_turn = False
-
-        self.stop_timer_start = None
-        self.stop_drive_duration = 1.5
-
+        self.state = "mapping"
+        self.move = False
+        self.movement_state = None
+        self.goal_ticks = None
+        self.goal_direction = None
+        self.current_pos = (0, 0)
+        self.orientation = None
+        self.direction = "up"
+        self.lidar = None
+        self.dir_lidar = {}
+        self.dir_cells = {"up": (0, 1), "right": (1, 0), "down": (0, -1), "left": (-1, 0)}
+        self.robot_directions = {"front": "up", "right": "right", "back": "down", "left": "left"}
+        # mapping variables
+        self.map = {}
+        self.unmapped_cells = [(0, 0)]
+        self.target = (0, 0)
+        self.stop_zone = None
+        self.route = None
         # pid variables
         self.right_pid = PID()
         self.left_pid = PID()
         self.dt = 0
         self.time_memory = [0, 0]
-        self.drive_count = 0
+        # constants
+        self.EDGE_LENGTH = 0.615
+        self.STOP_DISTANCE = 0.25
+        self.CENTERING_DISTANCE = 0.31
+        self.CUTOFF_DISTANCE = 0.75
+        self.ANGLE_MARGIN_OF_ERROR = 0.05
+        self.DIST_MARGIN_OF_ERROR = 0.01
+        self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
 
-        self.orientation = 0
-
-    def update_limits(self, limit):
-        """Update limits of PID controllers."""
-        self.left_pid.limit = limit
-        self.right_pid.limit = limit
-
-    def snap_to_nearest_90(self, angle_rad):
-        """Fix the angle to snapping to the nearest 90 value 0, 90, 180, 270 or 360 degrees."""
-        angle_deg = math.degrees(angle_rad)
-        snapped_deg = round(angle_deg / 90) * 90
-        snapped_deg = snapped_deg % 360
-        return math.radians(snapped_deg)
-
-    def get_orientation(self):
-        """Get the robots orientation."""
-        orientation = self.robot.get_orientation()
-        if orientation < 0:
-            orientation += 2 * math.pi
-        return orientation
+    # sense functions
+    def get_direction(self):
+        """Determine the robot's direction based on its orientation."""
+        if -0.02 < self.orientation < 0.02:
+            return "up"
+        elif -1.59 < self.orientation < -1.55:
+            return "right"
+        elif abs(abs(self.orientation) - math.pi) < 0.02:
+            return "down"
+        elif 1.55 < self.orientation < 1.59:
+            return "left"
+        else:
+            return self.direction
 
     def track_speed(self):
-        """Track speed by looking at changes in encoder values."""
+        """Track speed."""
         self.left_pid.set_ticks(self.robot.get_left_motor_encoder_ticks())
         self.right_pid.set_ticks(self.robot.get_right_motor_encoder_ticks())
 
@@ -122,156 +121,56 @@ class Robot:
         self.left_pid.calculate_speed(self.dt)
         self.right_pid.calculate_speed(self.dt)
 
-    def sense(self) -> None:
-        """Gather sensor data.
-
-        Use the robot's sensors to collect data about its environment.
-        This method updates internal state variables based on sensor readings.
-        """
-        self.track_speed()
-        self.ir = self.robot.get_ir_intensities_list()
-        self.ir_left = self.ir[0]
-        self.ir_center = self.ir[3]
-        self.ir_right = self.ir[6]
-        self.orientation = self.get_orientation()
-
-        print(
-            f"center={self.ir_center:.1f} | left={self.ir_left:.1f} | right={self.ir_right:.1f} | state={self.state} | orientation={math.degrees(self.orientation):.1f}°")
-
-    def check_exit_with_lidar(self):
-        """Check the lidar distances 180 degrees in front.
-
-        If its mostly inf the robot is almost out and should do a last little sprint to end it a little further from the exit.
-        """
-        lidar = self.robot.get_lidar_range_list()
-        forward_indices = list(range(320, 640))
-        forward_distances = [lidar[i] for i in forward_indices]
-        inf_count = sum(1 for d in forward_distances if math.isinf(d))
-        print(inf_count)
-        if inf_count >= (2 / 3) * len(forward_distances):
-            self.stop_timer_start = self.robot.get_time()
-            self.state = "stop"
-        else:
-            self.state = "drive"
-
+    # plan functions
     def handle_state(self):
-        """Handle the robots different states.
+        """Change the robot's state if needed."""
+        if self.state == "mapping" and self.unmapped_cells == [] and self.stop_zone is not None:
+            self.state = "navigating"
+            self.set_target(self.stop_zone)
+        elif self.state == "navigating" and self.at_stop_zone():
+            self.state = "out"
+            self.move = True
+            self.movement_state = "stopping"
 
-        Driving and turning both ways.
-        """
-        if self.state == "drive":
-            self.check_exit_with_lidar()
-            self.handle_drive_logic()
-        elif self.state in ["turn_left", "turn_right"]:
-            self.handle_turn_logic()
+    def check_movement(self):
+        """Stop the robot if it has reached its goal."""
+        if self.movement_state == "driving_forward" and (self.right_pid.get_ticks() >= self.goal_ticks or self.dir_lidar["front"] < self.CENTERING_DISTANCE):
+            # change cell
+            diff = self.dir_cells[self.direction]
+            self.current_pos = self.current_pos[0] + diff[0], self.current_pos[1] + diff[1]
+            print("MOVED TO", self.current_pos)
+            # stop
+            self.movement_state = "centering"
+            print("CENTERING")
+        elif self.movement_state == "centering":
+            self.center_in_cell()
+        elif self.movement_state == "stopping" and self.stopped():
+            print("STOPPED")
+            self.move = False
 
-    def handle_drive_logic(self):
-        """Handle drive logic.
-
-        Fix the damn driving angle.
-        If theres a wall in the way turn right.
-        If theres a gap in the left wall turn left.
-        Otherwise keep driving straight.
-        """
-        snapped = self.snap_to_nearest_90(self.orientation)
-        angle_error = (snapped - self.orientation + math.pi) % (2 * math.pi) - math.pi
-        if abs(angle_error) > math.radians(1):  # if the angle is off more than 1 degree
-            if angle_error > 0:
-                self.state = "turn_left"
-            else:
-                self.state = "turn_right"
-            self.turn_start_orientation = self.orientation
-            self.orientation_goal = snapped
-            print(f"Correcting driving direction by {math.degrees(angle_error):.1f} degrees.")
-            return
-
-        if self.ir_center > 50:
-            self.state = "turn_right"
-            self.turn_start_orientation = self.orientation
-            self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
-        elif not self.left_gap_detected and self.ir_left > 50:
-            self.left_gap_detected = True
-            self.gap_close_counter = 0
-        elif self.left_gap_detected:
-            if self.ir_left < 20:
-                self.gap_close_counter += 1
-            if self.gap_close_counter >= 35:
-                if self.left_turn_counter >= 6:
-                    if self.ir_center < 50:
-                        self.state = "turn_right"
-                        self.turn_start_orientation = self.orientation
-                        self.orientation_goal = self.snap_to_nearest_90(self.orientation - math.pi / 2)
-                        self.left_turn_counter = 0
-                    else:
-                        self.state = "drive"
-                else:
-                    self.state = "turn_left"
-                    self.turn_start_orientation = self.orientation
-                    self.orientation_goal = self.snap_to_nearest_90(self.orientation + math.pi / 2)
-                    self.left_turn_counter += 1
-                self.left_gap_detected = False
-                self.gap_close_counter = 0
+    def center_in_cell(self):
+        """Adjust position to center of the current cell."""
+        # print("FRONT MODULUS:", self.dir_lidar["front"] % self.EDGE_LENGTH)
+        # print("BACK:", self.dir_lidar["back"])
+        if self.dir_lidar["front"] == float('inf') and self.dir_lidar["back"] == float('inf'):
+            self.movement_state = "stopping"
         else:
-            self.state = "drive"
-
-    def handle_turn_logic(self):
-        """Handle turning logic.
-
-        If the robot finished turning start driving again.
-        If the robot made a right turn reset the left turn counter.
-        """
-        if self.reached_orientation():
-            if self.state == "turn_right":
-                self.left_turn_counter = 0
-            self.state = "drive"
-
-    def reached_orientation(self):
-        """Check if its reached the orientation goal with a difference of 1 degree."""
-        angle_error = (self.orientation_goal - self.orientation + math.pi) % (2 * math.pi) - math.pi
-        return abs(angle_error) < math.radians(1)
-
-    def plan(self) -> None:
-        """Plan the robot's actions.
-
-        Process the data collected during sensing and decide the next course
-        of action for the robot.
-        """
-        if self.state == "stop" and self.stop_timer_start is not None:
-            elapsed = self.robot.get_time() - self.stop_timer_start
-            if elapsed < self.stop_drive_duration:
-                self.drive_to_target()
+            current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
+            current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
+            if math.isnan(current_front):
+                error = self.CENTERING_DISTANCE - current_back
+            elif math.isnan(current_back) or current_front + current_back > self.CUTOFF_DISTANCE or self.dir_lidar["front"] < self.STOP_DISTANCE:
+                error = current_front - self.CENTERING_DISTANCE
             else:
-                self.stop()
-        else:
-            self.handle_state()
-            if self.state == "drive":
-                self.drive_to_target()
-            elif self.state == "turn_left":
-                self.turn_left()
-            elif self.state == "turn_right":
-                self.turn_right()
+                error = current_front - current_back
+
+            if abs(error) < self.DIST_MARGIN_OF_ERROR:
+                self.movement_state = "stopping"
             else:
-                self.stop()
-
-    def drive_to_target(self):
-        """Drive the robot straight towards the target."""
-        self.left_pid.set_setpoint(5)
-        self.right_pid.set_setpoint(5)
-        self.update_limits(0.05)
-
-    def turn_left(self):
-        """Turn left."""
-        self.left_pid.set_setpoint(-1)
-        self.right_pid.set_setpoint(1)
-        self.update_limits(0.1)
-        print("turn left")
-
-    def turn_right(self):
-        """Turn right."""
-        self.left_pid.set_setpoint(1)
-        self.right_pid.set_setpoint(-1)
-        self.update_limits(0.1)
-        print("turn right")
+                direction = 1 if error > 0 else -1
+                self.left_pid.set_setpoint(2 * direction)
+                self.right_pid.set_setpoint(2 * direction)
+                self.update_limits(0.03)
 
     def stop(self):
         """Stop the robot."""
@@ -279,33 +178,205 @@ class Robot:
         self.right_pid.set_setpoint(-10 if self.right_pid.get_speed() > 0 else 0)
         self.update_limits(0.05)
         if self.left_pid.get_speed() < 0.01 and self.right_pid.get_speed() < 0.01:
-            self.drive_count += 1
             self.left_pid.set_setpoint(0)
             self.right_pid.set_setpoint(0)
             self.update_limits(0.05)
-        print("stop")
 
-    def update_wheel_speedL(self):
-        """Update the left wheel speed of the robot."""
-        setpoint = self.setpointL
-        speed = self.LeftSpeed
-        error = setpoint - speed
-        self.error_sum_left += error * self.dt
-        error_diff = (error - self.previous_error_left) / self.dt if self.dt > 0 else 0
-        u = self.kp * error + self.ki * self.error_sum_left + self.kd * error_diff
-        self.previous_error_left = error
-        return max(min(u, self.limit), -self.limit)
+    def set_target(self, target):
+        """Set new target and reset route."""
+        self.target = target
+        self.route = None
 
-    def update_wheel_speedR(self):
-        """Update the right wheel speed of the robot."""
-        setpoint = self.setpointR
-        speed = self.RightSpeed
-        error = setpoint - speed
-        self.error_sum_right += error * self.dt if self.dt > 0 else 0
-        error_diff = (error - self.previous_error_right) / self.dt
-        u = self.kp * error + self.ki * self.error_sum_right + self.kd * error_diff
-        self.previous_error_right = error
-        return max(min(u, self.limit), -self.limit)
+    def at_stop_zone(self):
+        """Check if robot has made it out of the maze."""
+        return self.current_pos == self.stop_zone
+
+    def stopped(self):
+        """Check if robot has stopped moving."""
+        return abs(self.left_pid.get_speed()) < 0.01 and abs(self.right_pid.get_speed()) < 0.01
+
+    def at_target(self):
+        """Check if robot has reached its current target."""
+        return self.current_pos == self.target
+
+    def map_cell(self):
+        """Map the current cell the robot occupies."""
+        neighbours = []
+        is_stop_zone = 0
+        # find traversable cells in each direction
+        for direction, lidar in self.dir_lidar.items():
+            if lidar > self.EDGE_LENGTH:
+                if lidar == float("inf"):
+                    is_stop_zone += 1
+                diff_x, diff_y = self.dir_cells[self.robot_directions[direction]]
+                neighbour = self.current_pos[0] + diff_x, self.current_pos[1] + diff_y
+                neighbours.append(neighbour)
+
+        # if lidar shows inf in 3 or more directions, then stop zone has likely been found
+        if is_stop_zone >= 3:
+            self.stop_zone = self.current_pos
+            print("STOP ZONE:", self.dir_lidar)
+        else:
+            for cell in neighbours:  # add each newly discovered cell to unmapped_cells
+                if cell not in self.map.keys():
+                    self.unmapped_cells.append(cell)
+
+        print("MAPPED", self.current_pos, ":", neighbours)
+        self.map[self.current_pos] = neighbours  # add to map
+        self.set_target(self.unmapped_cells.pop())  # set next cell to map
+
+    def move_to_target(self):
+        """Move the robot to the target."""
+        if self.route is None or not self.route:
+            if self.target in self.map[self.current_pos]:  # if the target is a neighbor
+                self.route = [self.target]
+            else:
+                self.find_route()
+        next_cell = self.route[0]  # get next cell to move to in route
+        print("ROUTE:", self.route)
+
+        # get which direction
+        diff = next_cell[0] - self.current_pos[0], next_cell[1] - self.current_pos[1]
+        direction = None
+        for potential_direction, cell in self.dir_cells.items():
+            if cell == diff:
+                direction = potential_direction
+                break
+
+        if self.direction == direction:
+            self.route.pop(0)
+            self.move_forward()
+        else:
+            self.turn(direction)
+
+    def find_route(self):
+        """Find route to the target via A* algorithm."""
+        frontier = PriorityQueue()
+        frontier.put((0, self.current_pos))  # start from current position
+        came_from = {self.current_pos: None}  # track how we reached each cell
+        cost_so_far = {self.current_pos: 0}  # track the cost to reach each cell
+
+        while not frontier.empty():
+            _, current = frontier.get()
+
+            if current == self.target:  # if reached the goal already stop
+                break
+
+            # loop through all neighboring cells of the current cell
+            for neighbor in self.map.get(current, []):
+                new_cost = cost_so_far[current] + 1
+
+                if neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:
+                    cost_so_far[neighbor] = new_cost
+                    priority = new_cost + self.manhattan(neighbor, self.target)
+                    frontier.put((priority, neighbor))
+                    came_from[neighbor] = current
+
+        # reconstruct path
+        if self.target not in came_from:
+            print("NO ROUTE FOUND TO TARGET")
+            print("CAME FROM", came_from)
+            return []
+
+        path = []
+        current = self.target
+        # keep going backwards through came_from map until we reach the starting cell
+        while current is not None:
+            path.append(current)
+            current = came_from[current]
+        path.reverse()
+        self.route = path[1:]
+
+    def manhattan(self, a, b):
+        """Calculate Manhattan distance between two cells."""
+        return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+    def move_forward(self):
+        """Move the robot forward to the next cell."""
+        self.move = True
+        self.movement_state = "driving_forward"
+        self.goal_ticks = self.right_pid.get_ticks() + self.EDGE_LENGTH / self.METERS_PER_TICK
+
+        self.left_pid.set_setpoint(5)
+        self.right_pid.set_setpoint(5)
+        self.update_limits(0.05)
+
+    def turn(self, direction):
+        """Turn a given direction."""
+        self.move = True
+        self.movement_state = "turning"
+        self.goal_direction = direction
+
+        directions = ["up", "right", "down", "left"]
+        diff = directions.index(direction) - directions.index(self.direction)
+        if diff == -1 or diff == 3:  # turn left, 3 is for up -> left
+            self.left_pid.set_setpoint(-1)
+            self.right_pid.set_setpoint(1)
+        else:
+            self.left_pid.set_setpoint(1)
+            self.right_pid.set_setpoint(-1)
+        self.update_limits(0.1)
+
+    def update_limits(self, limit):
+        """Update limits of PID controllers."""
+        self.left_pid.limit = limit
+        self.right_pid.limit = limit
+
+    def sense(self) -> None:
+        """Gather sensor data.
+
+        Use the robot's sensors to collect data about its environment.
+        This method updates internal state variables based on sensor readings.
+        """
+        self.orientation = self.robot.get_orientation()
+
+        direction = self.get_direction()
+        if direction != self.direction:
+            self.direction = direction
+            directions = ["up", "right", "down", "left"]
+            robot_directions = ["front", "right", "back", "left"]
+            index = directions.index(self.direction)
+            for direction in robot_directions:
+                self.robot_directions[direction] = directions[index]
+                index += 1
+                index %= len(directions)
+            self.move = True
+            self.movement_state = "centering"
+
+        self.track_speed()
+
+        self.lidar = self.robot.get_lidar_range_list()
+        if self.lidar:
+            self.dir_lidar["front"] = min(self.lidar[470:490])  # front (0 degrees)
+            self.dir_lidar["back"] = min(self.lidar[150:170])  # back (180 degrees)
+            self.dir_lidar["left"] = self.lidar[320] # left (90 degrees)
+            self.dir_lidar["right"] = self.lidar[1]  # right (270 degrees)
+
+    def plan(self) -> None:
+        """Plan the robot's actions.
+
+        Process the data collected during sensing and decide the next course
+        of action for the robot.
+        """
+        self.handle_state()
+
+        if self.move:  # if currently moving focus on that
+            self.check_movement()
+            if self.movement_state == "stopping":
+                self.stop()
+        elif self.state == "mapping":
+            if self.at_target():
+                print("AT TARGET")
+                self.route = None
+                self.map_cell()
+            else:
+                print("NOT AT TARGET")
+                self.move_to_target()
+        elif self.state == "navigating" and not self.at_stop_zone():
+            self.move_to_target()
+        elif self.state == "out" and self.stopped():
+            self.print_map()
+            self.state = "done"
 
     def act(self) -> None:
         """Execute planned actions.
@@ -324,3 +395,39 @@ class Robot:
         self.sense()
         self.plan()
         self.act()
+
+    def print_map(self):
+        """Print the maze as ASCII map with walls (#) and corridors ( )."""
+        map_cells = self.map.keys()
+        all_cells = set(map_cells)
+        for neighbors in self.map.values():
+            all_cells.update(neighbors)
+
+        min_x = min(x for x, y in all_cells)
+        max_x = max(x for x, y in all_cells)
+        min_y = min(y for x, y in all_cells)
+        max_y = max(y for x, y in all_cells)
+
+        # build a grid
+        width = (max_x - min_x + 1) * 2 + 1
+        height = (max_y - min_y + 1) * 2 + 2
+        grid = [["#" for _ in range(width)] for _ in range(height)]
+
+        # map cells to visual positions
+        for (x, y), neighbors in self.map.items():
+            cx, cy = (x - min_x) * 2 + 1, (max_y - y) * 2 + 1
+            grid[cy][cx] = " "  # center of cell
+
+            for nx, ny in neighbors:
+                dx = nx - x
+                dy = ny - y
+                if dx == 1:  # right
+                    grid[cy][cx + 1] = " "
+                elif dx == -1:  # left
+                    grid[cy][cx - 1] = " "
+                elif dy == 1:  # up
+                    grid[cy - 1][cx] = " "
+                elif dy == -1:  # down
+                    grid[cy + 1][cx] = " "
+
+        print("\n".join("".join(row) for row in grid))
