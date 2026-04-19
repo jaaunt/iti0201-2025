@@ -88,9 +88,8 @@ class Robot:
         self.time_memory = [0, 0]
         # constants
         self.EDGE_LENGTH = 0.615
-        self.STOP_DISTANCE = 0.25
-        self.CENTERING_DISTANCE = 0.31
-        self.CUTOFF_DISTANCE = 0.75
+        self.CENTERING_DISTANCE = 0.3
+        self.CUTOFF_DISTANCE = 0.5
         self.ANGLE_MARGIN_OF_ERROR = 0.05
         self.DIST_MARGIN_OF_ERROR = 0.01
         self.METERS_PER_TICK = math.pi * self.robot.WHEEL_DIAMETER / self.right_pid.TICKS_PER_ROTATION
@@ -134,7 +133,7 @@ class Robot:
 
     def check_movement(self):
         """Stop the robot if it has reached its goal."""
-        if self.movement_state == "driving_forward" and (self.right_pid.get_ticks() >= self.goal_ticks or self.dir_lidar["front"] < self.CENTERING_DISTANCE):
+        if self.movement_state == "driving_forward" and self.right_pid.get_ticks() >= self.goal_ticks:
             # change cell
             diff = self.dir_cells[self.direction]
             self.current_pos = self.current_pos[0] + diff[0], self.current_pos[1] + diff[1]
@@ -142,6 +141,9 @@ class Robot:
             # stop
             self.movement_state = "centering"
             print("CENTERING")
+        elif self.movement_state == "turning" and self.direction == self.goal_direction:
+            print("TURNED", self.direction)
+            self.movement_state = "stopping"
         elif self.movement_state == "centering":
             self.center_in_cell()
         elif self.movement_state == "stopping" and self.stopped():
@@ -150,34 +152,27 @@ class Robot:
 
     def center_in_cell(self):
         """Adjust position to center of the current cell."""
-        front = self.dir_lidar["front"]
-        back = self.dir_lidar["back"]
-
-        valid_front = not (math.isinf(front) or math.isnan(front))
-        valid_back = not (math.isinf(back) or math.isnan(back))
-
-        if not valid_front and not valid_back:
-            print("CENTERING SKIPPED: both front and back are invalid.")
-            return
-
-        current_front = front % self.EDGE_LENGTH if valid_front else None
-        current_back = back % self.EDGE_LENGTH if valid_back else None
-
-        if valid_front and not valid_back:
-            error = current_front - self.CENTERING_DISTANCE
-        elif valid_back and not valid_front:
-            error = self.CENTERING_DISTANCE - current_back
-        else:
-            center = (current_front + current_back) / 2
-            error = current_front - current_back
-
-        if abs(error) < self.DIST_MARGIN_OF_ERROR:
+        print("FRONT:", self.dir_lidar["front"] % self.EDGE_LENGTH)
+        print("BACK:", self.dir_lidar["back"] % self.EDGE_LENGTH)
+        if (self.dir_lidar["back"] == self.dir_lidar["front"] == float('inf')) or self.dir_lidar["front"] < self.CENTERING_DISTANCE:
             self.movement_state = "stopping"
         else:
-            direction = 1 if error > 0 else -1
-            self.left_pid.set_setpoint(2 * direction)
-            self.right_pid.set_setpoint(2 * direction)
-            self.update_limits(0.03)
+            current_back = self.dir_lidar["back"] % self.EDGE_LENGTH
+            current_front = self.dir_lidar["front"] % self.EDGE_LENGTH
+            if math.isnan(current_back) or current_back > self.CUTOFF_DISTANCE:
+                error = self.CENTERING_DISTANCE - current_front
+            elif math.isnan(current_front):
+                error = self.CENTERING_DISTANCE - current_back
+            else:
+                error = current_front - current_back
+
+            if abs(error) < self.DIST_MARGIN_OF_ERROR:
+                self.movement_state = "stopping"
+            else:
+                direction = 1 if error > 0 else -1
+                self.left_pid.set_setpoint(2 * direction)
+                self.right_pid.set_setpoint(2 * direction)
+                self.update_limits(0.03)
 
     def stop(self):
         """Stop the robot."""
@@ -200,7 +195,7 @@ class Robot:
 
     def stopped(self):
         """Check if robot has stopped moving."""
-        return abs(self.left_pid.get_speed()) < 0.01 and abs(self.right_pid.get_speed()) < 0.01
+        return self.left_pid.get_speed() == self.right_pid.get_speed() == 0
 
     def at_target(self):
         """Check if robot has reached its current target."""
@@ -222,7 +217,6 @@ class Robot:
         # if lidar shows inf in 3 or more directions, then stop zone has likely been found
         if is_stop_zone >= 3:
             self.stop_zone = self.current_pos
-            print("STOP ZONE:", self.dir_lidar)
         else:
             for cell in neighbours:  # add each newly discovered cell to unmapped_cells
                 if cell not in self.map.keys():
@@ -337,9 +331,8 @@ class Robot:
         """
         self.orientation = self.robot.get_orientation()
 
-        direction = self.get_direction()
-        if direction != self.direction:
-            self.direction = direction
+        self.direction = self.get_direction()
+        if self.direction:
             directions = ["up", "right", "down", "left"]
             robot_directions = ["front", "right", "back", "left"]
             index = directions.index(self.direction)
@@ -347,8 +340,6 @@ class Robot:
                 self.robot_directions[direction] = directions[index]
                 index += 1
                 index %= len(directions)
-            self.move = True
-            self.movement_state = "centering"
 
         self.track_speed()
 
@@ -356,8 +347,8 @@ class Robot:
         if self.lidar:
             self.dir_lidar["front"] = min(self.lidar[470:490])  # front (0 degrees)
             self.dir_lidar["back"] = min(self.lidar[150:170])  # back (180 degrees)
-            self.dir_lidar["left"] = self.lidar[320] # left (90 degrees)
-            self.dir_lidar["right"] = self.lidar[1]  # right (270 degrees)
+            self.dir_lidar["left"] = min(self.lidar[310:330])  # left (90 degrees)
+            self.dir_lidar["right"] = min(self.lidar[630:] + self.lidar[:10])  # right (270 degrees)
 
     def plan(self) -> None:
         """Plan the robot's actions.
